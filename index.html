@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Планировщик маршрутов</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Планировщик маршрутов</h1>
+        <form id="routeForm">
+            <div class="input-group">
+                <input type="text" id="location" required>
+                <label for="location">Место назначения</label>
+            </div>
+            <div class="input-group">
+                <input type="date" id="arrivalDate" required>
+                <label for="arrivalDate">Дата прибытия</label>
+            </div>
+            <div class="input-group">
+                <input type="time" id="arrivalTime" required>
+                <label for="arrivalTime">Время прибытия</label>
+            </div>
+            <div class="input-group">
+                <input type="time" id="departureTime" required>
+                <label for="departureTime">Время отправления</label>
+            </div>
+            <div class="input-group">
+                <input type="text" id="duration" required placeholder="Чч:Мм">
+                <label for="duration">Длительность</label>
+            </div>
+            <div class="input-group">
+                <textarea id="details" placeholder=" "></textarea>
+                <label for="details">Примечания</label>
+            </div>
+            <div class="editable-options">
+                <label>
+                    <input type="checkbox" id="editableDuration">
+                    Можно редактировать длительность
+                </label>
+                <label>
+                    <input type="checkbox" id="editableDepartureTime">
+                    Можно редактировать время отправления
+                </label>
+            </div>
+            <button type="submit">Добавить маршрут</button>
+        </form>
+        <ul id="routeList"></ul>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
