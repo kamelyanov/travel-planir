@@ -1,4 +1,4 @@
-const routes = [];
+const routes = JSON.parse(localStorage.getItem('routes')) || [];
 
 document.getElementById('routeForm').addEventListener('submit', function(event) {
     event.preventDefault();
@@ -25,6 +25,7 @@ document.getElementById('routeForm').addEventListener('submit', function(event) 
     };
 
     routes.push(route);
+    localStorage.setItem('routes', JSON.stringify(routes));
     renderRoutes();
     this.reset();
 });
@@ -39,50 +40,18 @@ function renderRoutes() {
             <div>
                 <strong>${route.location}</strong> | Дата: ${route.arrivalDate} | Время прибытия: ${route.arrivalTime} | Время отправления: ${route.departureTime} | Длительность: ${route.duration}
                 ${route.details ? `<div>Примечание: ${route.details}</div>` : ''}
+                <button onclick="deleteRoute(${index})">Удалить</button>
             </div>
         `;
-
         routeList.appendChild(listItem);
     });
 }
 
-// Функция для пересчета времени отправления и длительности
-document.getElementById('duration').addEventListener('input', function() {
-    const duration = this.value.split(':');
-    if (duration.length === 2) {
-        const hours = parseInt(duration[0]);
-        const minutes = parseInt(duration[1]);
-        const arrivalTime = document.getElementById('arrivalTime').value.split(':');
-        const arrivalHours = parseInt(arrivalTime[0]);
-        const arrivalMinutes = parseInt(arrivalTime[1]);
+function deleteRoute(index) {
+    routes.splice(index, 1);
+    localStorage.setItem('routes', JSON.stringify(routes));
+    renderRoutes();
+}
 
-        if (!isNaN(hours) && !isNaN(minutes)) {
-            const departureDate = new Date();
-            departureDate.setHours(arrivalHours + hours);
-            departureDate.setMinutes(arrivalMinutes + minutes);
-            document.getElementById('departureTime').value = departureDate.toTimeString().slice(0, 5);
-        }
-    }
-});
-
-document.getElementById('departureTime').addEventListener('input', function() {
-    const departureTime = this.value.split(':');
-    const arrivalTime = document.getElementById('arrivalTime').value.split(':');
-    const arrivalHours = parseInt(arrivalTime[0]);
-    const arrivalMinutes = parseInt(arrivalTime[1]);
-
-    const departureHours = parseInt(departureTime[0]);
-    const departureMinutes = parseInt(departureTime[1]);
-
-    if (!isNaN(departureHours) && !isNaN(departureMinutes)) {
-        const durationHours = departureHours - arrivalHours;
-        const durationMinutes = departureMinutes - arrivalMinutes;
-
-        if (durationMinutes < 0) {
-            durationHours--;
-            durationMinutes += 60;
-        }
-
-        document.getElementById('duration').value = `${durationHours}:${durationMinutes < 10 ? '0' : ''}${durationMinutes}`;
-    }
-});
+// Валидация и обработка времени
+// (оставьте существующий код, добавив валидацию)

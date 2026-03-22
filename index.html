@@ -7,31 +7,31 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
+    <main class="container">
         <h1>Планировщик маршрутов</h1>
-        <form id="routeForm">
+        <form id="routeForm" aria-label="Форма добавления маршрута">
             <div class="input-group">
-                <input type="text" id="location" required>
+                <input type="text" id="location" required placeholder=" " aria-label="Место назначения">
                 <label for="location">Место назначения</label>
             </div>
             <div class="input-group">
-                <input type="date" id="arrivalDate" required>
+                <input type="date" id="arrivalDate" required aria-label="Дата прибытия">
                 <label for="arrivalDate">Дата прибытия</label>
             </div>
             <div class="input-group">
-                <input type="time" id="arrivalTime" required>
+                <input type="time" id="arrivalTime" required aria-label="Время прибытия">
                 <label for="arrivalTime">Время прибытия</label>
             </div>
             <div class="input-group">
-                <input type="time" id="departureTime" required>
+                <input type="time" id="departureTime" required aria-label="Время отправления">
                 <label for="departureTime">Время отправления</label>
             </div>
             <div class="input-group">
-                <input type="text" id="duration" required placeholder="Чч:Мм">
+                <input type="text" id="duration" required placeholder="Чч:Мм" aria-label="Длительность">
                 <label for="duration">Длительность</label>
             </div>
             <div class="input-group">
-                <textarea id="details" placeholder=" "></textarea>
+                <textarea id="details" placeholder=" " aria-label="Примечания"></textarea>
                 <label for="details">Примечания</label>
             </div>
             <div class="editable-options">
@@ -47,7 +47,7 @@
             <button type="submit">Добавить маршрут</button>
         </form>
         <ul id="routeList"></ul>
-    </div>
+    </main>
     <script src="script.js"></script>
 </body>
 </html>
