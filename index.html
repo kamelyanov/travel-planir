@@ -3,88 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Планировщик маршрутов</title>
+    <title>Travel Planner</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-    <main class="container">
-        <h1>Планировщик маршрутов</h1>
-        <form id="routeForm" aria-label="Форма добавления маршрута">
-            <div class="input-group">
-                <input type="text" id="location" name="location" required placeholder=" " aria-label="Место назначения">
-                <label for="location">Место назначения</label>
-            </div>
-            <div class="input-group">
-                <input type="date" id="arrivalDate" name="arrivalDate" required aria-label="Дата прибытия">
-                <label for="arrivalDate">Дата прибытия</label>
-            </div>
-            <div class="input-group">
-                <input type="time" id="arrivalTime" name="arrivalTime" required aria-label="Время прибытия">
-                <label for="arrivalTime">Время прибытия</label>
-            </div>
-            <div class="input-group">
-                <input type="time" id="departureTime" name="departureTime" required aria-label="Время отправления">
-                <label for="departureTime">Время отправления</label>
-            </div>
-            <div class="input-group">
-                <input type="text" id="duration" name="duration" required placeholder="Чч:Мм" aria-label="Длительность">
-                <label for="duration">Длительность</label>
-            </div>
-            <div class="input-group">
-                <textarea id="details" name="details" placeholder=" " aria-label="Примечания"></textarea>
-                <label for="details">Примечания</label>
-            </div>
-            <div class="editable-options">
-                <label>
-                    <input type="checkbox" id="editableDuration">
-                    Можно редактировать длительность
-                </label>
-                <label>
-                    <input type="checkbox" id="editableDepartureTime">
-                    Можно редактировать время отправления
-                </label>
-            </div>
-            <button type="submit">Добавить маршрут</button>
-        </form>
-        <div id="routeList"></div>
-        
-        <!-- Модальное окно для добавления новой точки -->
-        <div id="addLocationModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Добавить точку маршрута</h2>
-                    <button class="close-btn">&times;</button>
-                </div>
-                <form id="addLocationForm">
-                    <div class="input-group">
-                        <input type="text" id="newLocation" name="newLocation" required placeholder=" " aria-label="Место назначения">
-                        <label for="newLocation">Место назначения</label>
-                    </div>
-                    <div class="input-group">
-                        <input type="date" id="newArrivalDate" name="newArrivalDate" required aria-label="Дата прибытия">
-                        <label for="newArrivalDate">Дата прибытия</label>
-                    </div>
-                    <div class="input-group">
-                        <input type="time" id="newArrivalTime" name="newArrivalTime" required aria-label="Время прибытия">
-                        <label for="newArrivalTime">Время прибытия</label>
-                    </div>
-                    <div class="input-group">
-                        <input type="time" id="newDepartureTime" name="newDepartureTime" required aria-label="Время отправления">
-                        <label for="newDepartureTime">Время отправления</label>
-                    </div>
-                    <div class="input-group">
-                        <input type="text" id="newDuration" name="newDuration" required placeholder="Чч:Мм" aria-label="Длительность">
-                        <label for="newDuration">Длительность</label>
-                    </div>
-                    <div class="input-group">
-                        <textarea id="newDetails" name="newDetails" placeholder=" " aria-label="Примечания"></textarea>
-                        <label for="newDetails">Примечания</label>
-                    </div>
-                    <button type="submit">Добавить точку</button>
-                </form>
+    <div class="app-container">
+        <h1>
+            ✈️ Travel Planner
+            <small><i class="fas fa-map-signs"></i> планировщик маршрутов</small>
+        </h1>
+        <div class="sub">
+            <i class="fas fa-clock"></i> Планируйте маршрут, добавляя точки пребывания и переходы между ними.
+            Время прибытия = время отправления из предыдущей точки + длительность перехода.
+        </div>
+
+        <div class="timeline" id="timelineContainer">
+            <div class="timeline-track" id="timelineTrack">
+                <!-- динамическая отрисовка карточек -->
             </div>
         </div>
-    </main>
+
+        <div class="global-add">
+            <button class="btn-primary" id="addPointBtn"><i class="fas fa-plus-circle"></i> Добавить точку</button>
+        </div>
+
+        <div class="summary" id="summaryPanel">
+            <span><i class="fas fa-route"></i> Общая длительность: — </span>
+            <span><i class="fas fa-location-dot"></i> Всего точек: 0</span>
+        </div>
+    </div>
+
+    <!-- Модальное окно для добавления/редактирования точки -->
+    <div id="pointModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="pointModalTitle">Добавить точку</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Название точки</label>
+                    <input type="text" id="pointName" placeholder="Например: Москва, Аэропорт">
+                    <div class="form-error" id="error-name"></div>
+                </div>
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label>Длительность в пути</label>
+                        <input type="text" id="pointTravelDuration" placeholder="1ч 30м">
+                        <div class="form-error" id="error-travel"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Дата прибытия</label>
+                        <input type="date" id="pointDate">
+                        <div class="form-error" id="error-date"></div>
+                    </div>
+                </div>
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label>Время прибытия</label>
+                        <input type="time" id="pointArrival">
+                        <div class="form-error" id="error-arrival"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Время отправления</label>
+                        <input type="time" id="pointDeparture">
+                        <div class="form-error" id="error-departure"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Длительность пребывания</label>
+                    <input type="text" id="pointStayDuration" placeholder="—" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Заметки</label>
+                    <textarea id="pointNotes" rows="2" placeholder="Доп. информация"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="cancelPointModal">Отмена</button>
+                <button class="btn-primary" id="savePointModal">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="src/main.js"></script>
 </body>
 </html>

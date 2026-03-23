@@ -1,231 +1,340 @@
-body {
-    font-family: 'Roboto', sans-serif;
-    background-color: #f4f5f7;
-    margin: 0;
-    padding: 20px;
+* {
+    box-sizing: border-box;
+    font-family: system-ui, 'Segoe UI', 'Roboto', sans-serif;
 }
 
-.container {
-    max-width: 600px;
+body {
+    background: #f0f4f8;
+    margin: 0;
+    padding: 20px;
+    color: #1e2a3a;
+}
+
+.app-container {
+    max-width: 800px;
     margin: 0 auto;
     background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 32px;
+    box-shadow: 0 20px 35px -12px rgba(0,0,0,0.1);
+    padding: 20px 24px 32px;
 }
 
 h1 {
-    text-align: center;
-    color: #333;
+    font-size: 1.8rem;
+    margin: 0 0 6px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: space-between;
 }
 
-form {
+h1 small {
+    font-size: 0.85rem;
+    font-weight: normal;
+    background: #e9edf2;
+    padding: 6px 12px;
+    border-radius: 40px;
+    color: #2c3e66;
+}
+
+.sub {
+    color: #4a627a;
+    border-left: 4px solid #3b82f6;
+    padding-left: 14px;
+    margin: 8px 0 20px 0;
+    font-size: 0.95rem;
+}
+
+.timeline {
+    padding: 20px 0;
+}
+
+.timeline-track {
     display: flex;
     flex-direction: column;
-}
-
-.input-group {
-    position: relative;
-    margin-bottom: 20px;
-}
-
-input, textarea, button {
+    align-items: center;
+    gap: 16px;
     width: 100%;
-    padding: 12px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 14px;
-    transition: border-color 0.2s;
 }
 
-input:focus, textarea:focus {
-    border-color: #007bff;
+/* Карточка точки */
+.checkpoint-card {
+    background: white;
+    border-radius: 24px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    width: 100%;
+    max-width: 500px;
+    transition: all 0.2s;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
 }
 
-label {
-    position: absolute;
-    left: 12px;
-    top: 12px;
-    transition: 0.2s;
-    color: #999;
+.checkpoint-card.pinned {
+    border-left: 6px solid #f59e0b;
+    background: #fffef7;
+}
+
+.card-header {
+    background: #f8fafc;
+    padding: 12px 16px;
+    border-radius: 24px 24px 0 0;
+    border-bottom: 1px solid #eef2f6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.point-name-input {
+    font-weight: 700;
+    font-size: 1rem;
+    border: none;
+    background: transparent;
+    padding: 4px 0;
+    width: 200px;
+    border-bottom: 1px dashed #cbd5e1;
+    outline: none;
+}
+
+.point-name-input:focus {
+    border-bottom-color: #3b82f6;
+}
+
+.point-date-input {
+    font-size: 0.85rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 16px;
+    padding: 4px 8px;
+    background: white;
+    outline: none;
+}
+
+.point-date-input:focus {
+    border-color: #3b82f6;
+}
+
+.card-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.card-actions button {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    cursor: pointer;
+    color: #5b6e8c;
+    transition: 0.1s;
+    padding: 4px;
+    border-radius: 30px;
+}
+
+.card-actions button:hover {
+    background: #eef2f6;
+}
+
+.pin-btn.active {
+    color: #f59e0b;
+}
+
+.delete-btn {
+    color: #dc2626;
+}
+
+.delete-btn.disabled {
+    opacity: 0.4;
     pointer-events: none;
 }
 
-input:focus + label,
-input:not(:placeholder-shown) + label,
-textarea:focus + label,
-textarea:not(:placeholder-shown) + label {
-    top: -10px;
-    left: 12px;
-    font-size: 12px;
-    color: #007bff;
+/* Группа времени */
+.time-group {
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: white;
 }
 
-button {
-    background-color: #007bff;
-    color: white;
+.time-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+}
+
+.time-row label {
+    width: 70px;
+    font-weight: 500;
+    color: #334155;
+}
+
+.time-row input {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid #cbd5e6;
+    border-radius: 16px;
+    font-size: 0.85rem;
+    background: #fefefe;
+}
+
+.time-row input:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+.duration-display {
+    font-size: 0.8rem;
+    color: #64748b;
+    padding: 4px 8px;
+    background: #f1f5f9;
+    border-radius: 12px;
+    text-align: center;
+}
+
+/* Заметки */
+.notes-area {
+    padding: 4px 16px 12px 16px;
+}
+
+.notes-area textarea {
+    width: 100%;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 8px 10px;
+    font-size: 0.75rem;
+    resize: vertical;
+    font-family: inherit;
+    background: #fafcff;
+}
+
+.notes-area textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+/* Кнопка добавления после */
+.add-after-btn {
+    margin: 8px 16px 16px 16px;
+    background: #eff3f8;
+    border: none;
+    border-radius: 40px;
+    padding: 8px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #2c5f8a;
+    cursor: pointer;
+    transition: 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.add-after-btn:hover {
+    background: #e1e8f0;
+}
+
+/* Блок перехода */
+.transition-block {
+    width: 100%;
+    max-width: 400px;
+    background: #f1f5f9;
+    border-radius: 40px;
+    padding: 12px 8px;
+    text-align: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    border: 1px solid #dee4ec;
+}
+
+.transition-arrow {
+    font-size: 1.6rem;
+    color: #3b82f6;
+    margin-bottom: 6px;
+}
+
+.transition-info {
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: white;
+    border-radius: 28px;
+    padding: 6px 8px;
+    margin: 6px 0;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.transition-duration, .transition-cost {
+    background: #eef2ff;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+}
+
+.edit-transition-btn {
+    background: none;
     border: none;
     cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.2s;
+    color: #4b6a9b;
+    font-size: 0.75rem;
+    padding: 4px;
 }
 
-button:hover {
-    background-color: #0056b3;
+.edit-transition-btn:hover {
+    color: #3b82f6;
 }
 
-.editable-options {
-    display: none; /* Скрываем по умолчанию */
+/* Глобальное добавление */
+.global-add {
+    margin-top: 32px;
+    display: flex;
+    justify-content: center;
 }
 
-form:hover .editable-options {
-    display: block; /* Показываем при наведении на форму */
+.btn-primary {
+    background: #3b82f6;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 60px;
+    font-weight: 600;
+    color: white;
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    transition: 0.15s;
 }
 
-ul {
-    list-style-type: none;
-    padding: 0;
+.btn-primary:hover {
+    background: #2563eb;
+    transform: translateY(-2px);
 }
 
-/* Стили для карточек мест */
-.location-card {
-    background: #ffffff;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 15px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    position: relative;
+.btn-primary:active {
+    transform: translateY(0);
 }
 
-.location-header {
+/* Панель сводки */
+.summary {
+    margin-top: 28px;
+    background: #eef3fc;
+    border-radius: 28px;
+    padding: 14px 20px;
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 10px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
-}
-
-.location-title {
-    margin: 0;
-    color: #333;
-    font-size: 1.2em;
-    flex-grow: 1;
-}
-
-.location-date {
-    background: #e9ecef;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.9em;
-    color: #666;
-    text-align: right;
-}
-
-.location-time-info {
-    display: flex;
     flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
 }
 
-.time-info-item {
-    flex: 1;
-    min-width: 120px;
-}
-
-.time-info-label {
-    font-size: 0.8em;
-    color: #666;
-    margin-bottom: 2px;
-}
-
-.time-info-value {
-    font-weight: bold;
-    color: #333;
-}
-
-.duration-info {
-    font-size: 0.9em;
-    color: #555;
-    margin-bottom: 10px;
-}
-
-.notes-section {
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid #eee;
-}
-
-.notes-title {
-    font-weight: bold;
-    margin-bottom: 5px;
-    color: #333;
-}
-
-.notes-text {
-    color: #555;
-    margin-bottom: 10px;
-    min-height: 20px;
-}
-
-.notes-input {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 14px;
-    resize: vertical;
-}
-
-.hidden {
-    display: none;
-}
-
-.location-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.btn-edit, .btn-delete, .btn-add-location {
-    padding: 6px 12px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9em;
-    transition: background-color 0.2s;
-}
-
-.btn-edit {
-    background-color: #007bff;
-    color: white;
-}
-
-.btn-edit:hover {
-    background-color: #0056b3;
-}
-
-.btn-delete {
-    background-color: #dc3545;
-    color: white;
-}
-
-.btn-delete:hover {
-    background-color: #c82333;
-}
-
-.btn-add-location {
-    background-color: #28a745;
-    color: white;
-}
-
-.btn-add-location:hover {
-    background-color: #218838;
-}
-
-/* Стили для попапа */
+/* Модальные окна */
 .modal {
     display: none;
     position: fixed;
@@ -234,74 +343,135 @@ ul {
     top: 0;
     width: 100%;
     height: 100%;
+    overflow: auto;
     background-color: rgba(0,0,0,0.5);
+    backdrop-filter: blur(3px);
 }
 
 .modal-content {
-    background-color: #fefefe;
+    background-color: #fff;
     margin: 10% auto;
-    padding: 20px;
-    border: 1px solid #888;
-    width: 80%;
-    max-width: 500px;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    width: 90%;
+    max-width: 420px;
+    border-radius: 20px;
+    box-shadow: 0 20px 35px rgba(0,0,0,0.2);
+    animation: modalFadeIn 0.2s ease;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eef2f6;
 }
 
-.modal-header h2 {
+.modal-header h3 {
     margin: 0;
-    color: #333;
+    font-size: 1.1rem;
 }
 
-.close-btn {
-    background: none;
-    border: none;
-    font-size: 1.5em;
+.modal-header .close {
+    font-size: 24px;
+    font-weight: bold;
     cursor: pointer;
-    color: #aaa;
+    color: #7f8c9a;
+    transition: 0.1s;
 }
 
-.close-btn:hover {
-    color: #333;
+.modal-header .close:hover {
+    color: #1e2a3a;
 }
 
-/* Адаптивные стили */
-@media (max-width: 768px) {
-    .container {
-        padding: 10px;
-    }
-    
-    .location-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-    }
-    
-    .location-date {
-        align-self: flex-end;
-    }
-    
-    .location-time-info {
-        flex-direction: column;
-        gap: 5px;
-    }
-    
-    .time-info-item {
-        min-width: auto;
-    }
-    
-    .location-actions {
-        flex-direction: column;
-    }
-    
-    .btn-add-location {
-        width: 100%;
-    }
+.modal-body {
+    padding: 14px 16px;
+}
+
+.form-group {
+    margin-bottom: 12px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 500;
+    color: #2c3e66;
+    font-size: 0.8rem;
+}
+
+.form-group input, .form-group textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #cbd5e6;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    background: #fff;
+}
+
+.form-group input:focus, .form-group textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+}
+
+.form-group small {
+    display: block;
+    margin-top: 3px;
+    font-size: 0.7rem;
+    color: #6b7280;
+}
+
+.form-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.form-error {
+    color: #dc2626;
+    font-size: 0.75rem;
+    margin-top: 4px;
+    min-height: 16px;
+}
+
+.form-group input.error,
+.form-group textarea.error {
+    border-color: #dc2626;
+    background: #fef2f2;
+}
+
+.modal-footer {
+    padding: 12px 16px;
+    border-top: 1px solid #eef2f6;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.btn-secondary {
+    background: #e9edf2;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 30px;
+    font-weight: 500;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: 0.1s;
+}
+
+.btn-secondary:hover {
+    background: #dee4ec;
+}
+
+/* Адаптивность */
+@media (max-width: 700px) {
+    .checkpoint-card, .transition-block { max-width: 100%; }
+    h1 { font-size: 1.4rem; }
+    .summary { flex-direction: column; gap: 8px; }
 }

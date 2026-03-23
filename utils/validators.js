@@ -165,6 +165,14 @@ export function isValidAttachmentType(attachmentType) {
 export function validateRoute(routeData) {
   const errors = [];
 
+  // Для черновиков пропускаем обязательные поля
+  if (routeData.status === 'draft') {
+    return {
+      isValid: true,
+      errors: []
+    };
+  }
+
   // Проверяем обязательные поля
   if (!isValidName(routeData.destination?.name)) {
     errors.push('Название места назначения обязательно и должно быть действительным');

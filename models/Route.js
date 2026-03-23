@@ -90,9 +90,13 @@ export class Route {
    * @returns {boolean} Валиден ли маршрут
    */
   isValid() {
-    return this.destination.name.trim() !== '' && 
-           this.dates.startDate !== '' && 
-           this.dates.startTime !== '' && 
+    // Для черновиков разрешаем пустые поля
+    if (this.status === 'draft') {
+      return true;
+    }
+    return this.destination.name.trim() !== '' &&
+           this.dates.startDate !== '' &&
+           this.dates.startTime !== '' &&
            this.dates.endTime !== '';
   }
 

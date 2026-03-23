@@ -22,44 +22,56 @@ export class RouteController {
 
   /**
    * Добавляет новый маршрут
-   * @param {Route} route - Маршрут для добавления
-   * @returns {boolean} Успешно ли добавлен маршрут
+   * @param {Object} routeData - Данные маршрута
+   * @returns {Route|null} Добавленный маршрут или null
    */
-  addRoute(route) {
-    if (!(route instanceof Route)) {
-      route = new Route(route);
+  addRoute(routeData) {
+    try {
+      const route = new Route(routeData);
+      
+      if (!route.isValid()) {
+        const validation = validateRoute(routeData);
+        if (!validation.isValid) {
+          this.showErrorMessage(validation.errors.join('; '));
+          return null;
+        }
+      }
+
+      this.routes.push(route);
+      this.storageService.addRoute(route);
+      return route;
+    } catch (error) {
+      console.error('Ошибка при добавлении маршрута:', error);
+      this.showErrorMessage(error.message);
+      return null;
     }
-    
-    if (!route.isValid()) {
-      throw new Error('Неверный маршрут: отсутствуют обязательные поля');
-    }
-    
-    this.routes.push(route);
-    return this.storageService.addRoute(route);
   }
 
   /**
    * Обновляет существующий маршрут
    * @param {string} routeId - ID маршрута для обновления
-   * @param {Object} updatedData - Обновленные данные маршрута
-   * @returns {boolean} Успешно ли обновлен маршрут
+   * @param {Object} updatedData - Обновленные данные
+   * @returns {boolean} Успешно ли обновлён маршрут
    */
   updateRoute(routeId, updatedData) {
     const routeIndex = this.routes.findIndex(route => route.id === routeId);
-    
+
     if (routeIndex !== -1) {
-      const updatedRoute = new Route({ ...this.routes[routeIndex].toJSON(), ...updatedData });
+      const currentRoute = this.routes[routeIndex];
+      const mergedData = { ...currentRoute.toJSON(), ...updatedData };
+      const updatedRoute = new Route(mergedData);
+      
       this.routes[routeIndex] = updatedRoute;
       return this.storageService.updateRoute(routeId, updatedRoute);
     }
-    
+
     return false;
   }
 
   /**
    * Удаляет маршрут
    * @param {string} routeId - ID маршрута для удаления
-   * @returns {boolean} Успешно ли удален маршрут
+   * @returns {boolean} Успешно ли удалён маршрут
    */
   deleteRoute(routeId) {
     this.routes = this.routes.filter(route => route.id !== routeId);
@@ -84,56 +96,6 @@ export class RouteController {
   }
 
   /**
-   * Добавляет маршрут из формы
-   * @param {HTMLFormElement} form - HTML форма
-   */
-  addRouteFromForm(form) {
-    try {
-      // Получаем значения из формы
-      const formData = new FormData(form);
-      
-      // Создаем объект маршрута из данных формы
-      const routeData = {
-        destination: {
-          name: formData.get('location') || '',
-          address: formData.get('location') || '' // Пока совпадает с названием
-        },
-        dates: {
-          startDate: formData.get('arrivalDate') || '',
-          startTime: formData.get('arrivalTime') || '',
-          endTime: formData.get('departureTime') || ''
-        },
-        duration: this.parseDuration(formData.get('duration') || '00:00'),
-        details: formData.get('details') || '',
-        notes: formData.get('details') || '', // Используем те же детали как заметки
-        status: 'planned'
-      };
-
-      // Валидируем маршрут
-      const validation = validateRoute(routeData);
-      if (!validation.isValid) {
-        throw new Error(validation.errors.join('; '));
-      }
-
-      // Создаем и добавляем маршрут
-      const route = new Route(routeData);
-      this.addRoute(route);
-
-      // Очищаем форму
-      form.reset();
-
-      // Обновляем отображение
-      this.renderRoutes();
-
-      // Показываем сообщение об успехе
-      this.showSuccessMessage('Маршрут успешно добавлен!');
-    } catch (error) {
-      console.error('Ошибка при добавлении маршрута:', error);
-      this.showErrorMessage(error.message || 'Ошибка при добавлении маршрута');
-    }
-  }
-
-  /**
    * Парсит строку длительности в формате "ЧЧ:ММ"
    * @param {string} durationStr - Строка длительности
    * @returns {Object} Объект с часами и минутами
@@ -147,195 +109,334 @@ export class RouteController {
   }
 
   /**
-   * Отображает маршруты в интерфейсе
+   * Вычисляет продолжительность пребывания
+   * @param {string} arrivalTime - Время прибытия в формате HH:MM
+   * @param {string} departureTime - Время отправления в формате HH:MM
+   * @returns {Object} Объект с часами и минутами
    */
-  renderRoutes() {
-    const routeList = document.getElementById('routeList');
-    if (!routeList) {
-      console.error('Элемент списка маршрутов не найден');
-      return;
-    }
+  calculateStayDuration(arrivalTime, departureTime) {
+    const [arrivalH, arrivalM] = arrivalTime.split(':').map(Number);
+    const [departureH, departureM] = departureTime.split(':').map(Number);
 
-    // Очищаем текущий список
-    routeList.innerHTML = '';
+    let totalMinutes = (departureH * 60 + departureM) - (arrivalH * 60 + arrivalM);
+    if (totalMinutes < 0) totalMinutes += 24 * 60;
 
-    // Добавляем каждый маршрут в список
-    this.routes.forEach(route => {
-      const routeElement = this.createRouteElement(route);
-      routeList.appendChild(routeElement);
-    });
+    return {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60
+    };
   }
 
   /**
-   * Создает HTML-элемент для отображения маршрута
-   * @param {Route} route - Маршрут для отображения
-   * @returns {HTMLElement} Элемент маршрута
+   * Отображает маршруты в интерфейсе
+   * @param {Object} app - Ссылка на приложение для обработчиков
    */
-  createRouteElement(route) {
+  renderRoutes(app) {
+    const timelineTrack = document.getElementById('timelineTrack');
+    if (!timelineTrack) {
+      console.error('Элемент timelineTrack не найден');
+      return;
+    }
+
+    timelineTrack.innerHTML = '';
+
+    if (this.routes.length === 0) {
+      timelineTrack.innerHTML = `
+        <div style="text-align: center; color: #64748b; padding: 40px;">
+          <i class="fas fa-map-marked-alt" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.3;"></i>
+          <p>Нет точек маршрута. Нажмите "Добавить точку", чтобы начать планирование.</p>
+        </div>
+      `;
+      this.updateSummary();
+      return;
+    }
+
+    // Сортируем маршруты по дате и времени
+    const sortedRoutes = [...this.routes].sort((a, b) => {
+      const dateA = new Date(`${a.dates.startDate}T${a.dates.startTime || '00:00'}`);
+      const dateB = new Date(`${b.dates.startDate}T${b.dates.startTime || '00:00'}`);
+      return dateA - dateB;
+    });
+
+    sortedRoutes.forEach((route, index) => {
+      // Добавляем карточку точки
+      const cardElement = this.createCheckpointCard(route, app);
+      timelineTrack.appendChild(cardElement);
+
+      // Добавляем переход (кроме последней точки)
+      if (index < sortedRoutes.length - 1) {
+        const nextRoute = sortedRoutes[index + 1];
+        const transitionElement = this.createTransitionBlock(route, nextRoute, app);
+        timelineTrack.appendChild(transitionElement);
+      }
+    });
+
+    this.updateSummary();
+  }
+
+  /**
+   * Создаёт карточку точки
+   * @param {Route} route - Маршрут
+   * @param {Object} app - Ссылка на приложение
+   * @returns {HTMLElement} Элемент карточки
+   */
+  createCheckpointCard(route, app) {
     const div = document.createElement('div');
-    div.className = 'location-card';
-    div.dataset.routeId = route.id;
+    div.className = 'checkpoint-card';
+    if (route.priority === 'high') {
+      div.classList.add('pinned');
+    }
 
-    // Форматируем дату для отображения
     const formattedDate = route.dates.startDate ?
-      new Date(route.dates.startDate).toLocaleDateString('ru-RU') :
-      'Не указана';
+      new Date(route.dates.startDate).toLocaleDateString('ru-RU', { 
+        day: 'numeric', month: 'long' 
+      }) :
+      'Дата не указана';
 
-    // Вычисляем продолжительность пребывания
     const stayDuration = this.calculateStayDuration(
       route.dates.startTime || '00:00',
       route.dates.endTime || '00:00'
     );
 
     div.innerHTML = `
-      <div class="location-header">
-        <h3 class="location-title">${route.destination.name || 'Без названия'}</h3>
-        <span class="location-date">${formattedDate}</span>
-      </div>
-      <div class="location-time-info">
-        <div class="time-info-item">
-          <div class="time-info-label">Время прибытия</div>
-          <div class="time-info-value" id="arrival-${route.id}">
-            <span class="time-display">${route.dates.startTime || 'Не указано'}</span>
-            <input type="time" class="time-input hidden" id="arrival-input-${route.id}" value="${route.dates.startTime || ''}">
-          </div>
-        </div>
-        <div class="time-info-item">
-          <div class="time-info-label">Время отправления</div>
-          <div class="time-info-value" id="departure-${route.id}">
-            <span class="time-display">${route.dates.endTime || 'Не указано'}</span>
-            <input type="time" class="time-input hidden" id="departure-input-${route.id}" value="${route.dates.endTime || ''}">
-          </div>
+      <div class="card-header">
+        <input type="text" class="point-name-input" value="${route.destination.name || ''}" 
+          placeholder="Название точки" data-route-id="${route.id}" data-field="name">
+        <input type="date" class="point-date-input" value="${route.dates.startDate || ''}" 
+          data-route-id="${route.id}" data-field="startDate">
+        <div class="card-actions">
+          <button class="pin-btn ${route.priority === 'high' ? 'active' : ''}" 
+            data-route-id="${route.id}" title="Закрепить">
+            <i class="fas fa-thumbtack"></i>
+          </button>
+          <button class="edit-btn" data-route-id="${route.id}" title="Редактировать">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="delete-btn" data-route-id="${route.id}" title="Удалить">
+            <i class="fas fa-trash"></i>
+          </button>
         </div>
       </div>
-      <div class="duration-info">
-        <strong>Находясь из этого места:</strong> ${stayDuration.hours}ч ${stayDuration.minutes}м
-      </div>
-      <div class="notes-section">
-        <div class="notes-title">Примечания:</div>
-        <div class="notes-text" id="notes-${route.id}">
-          ${route.details ? route.details : 'Нет примечаний'}
+      <div class="time-group">
+        <div class="time-row">
+          <label><i class="fas fa-clock"></i> Прибытие:</label>
+          <input type="time" value="${route.dates.startTime || ''}" 
+            data-route-id="${route.id}" data-field="startTime">
         </div>
-        <textarea class="notes-input hidden" id="notes-input-${route.id}">${route.details || ''}</textarea>
+        <div class="time-row">
+          <label><i class="fas fa-clock"></i> Отправление:</label>
+          <input type="time" value="${route.dates.endTime || ''}" 
+            data-route-id="${route.id}" data-field="endTime">
+        </div>
+        <div class="time-row" style="justify-content: center;">
+          <span class="duration-display">
+            <i class="fas fa-hourglass-half"></i> ${stayDuration.hours}ч ${stayDuration.minutes}м
+          </span>
+        </div>
       </div>
-      <div class="location-actions">
-        <button class="btn-edit" data-route-id="${route.id}">Редактировать время</button>
-        <button class="btn-delete" data-route-id="${route.id}">Удалить</button>
-        <button class="btn-add-location" data-route-id="${route.id}">Добавить точку</button>
+      <div class="notes-area">
+        <textarea placeholder="Заметки..." data-route-id="${route.id}" data-field="notes">${route.notes || route.details || ''}</textarea>
       </div>
+      <button class="add-after-btn" data-route-id="${route.id}">
+        <i class="fas fa-plus"></i> Добавить точку после этой
+      </button>
     `;
 
-    // Добавляем обработчики событий
-    const deleteBtn = div.querySelector('.btn-delete');
-    deleteBtn.addEventListener('click', () => this.handleDeleteRoute(route.id));
+    // Обработчики
+    const deleteBtn = div.querySelector('.delete-btn');
+    deleteBtn.addEventListener('click', () => {
+      if (confirm('Удалить эту точку?')) {
+        this.deleteRoute(route.id);
+        this.renderRoutes(app);
+      }
+    });
 
-    const editBtn = div.querySelector('.btn-edit');
-    editBtn.addEventListener('click', () => this.handleEditTime(route.id));
+    const editBtn = div.querySelector('.edit-btn');
+    editBtn.addEventListener('click', () => app.openEditModal(route.id));
+
+    const pinBtn = div.querySelector('.pin-btn');
+    pinBtn.addEventListener('click', () => {
+      const newPriority = route.priority === 'high' ? 'medium' : 'high';
+      this.updateRoute(route.id, { priority: newPriority });
+      this.renderRoutes(app);
+    });
+
+    const addAfterBtn = div.querySelector('.add-after-btn');
+    addAfterBtn.addEventListener('click', () => {
+      app.openAddModal(route.id);
+    });
+
+    // Inline-редактирование
+    const inputs = div.querySelectorAll('input, textarea');
+    inputs.forEach(input => {
+      input.addEventListener('change', (e) => {
+        const field = e.target.dataset.field;
+        const value = e.target.value;
+
+        if (field) {
+          const currentRoute = this.getRouteById(route.id);
+          if (currentRoute) {
+            if (field === 'name') {
+              currentRoute.destination.name = value;
+              currentRoute.destination.address = value;
+            } else if (field === 'startDate') {
+              currentRoute.dates.startDate = value;
+            } else if (field === 'startTime') {
+              currentRoute.dates.startTime = value;
+            } else if (field === 'endTime') {
+              currentRoute.dates.endTime = value;
+            } else if (field === 'notes') {
+              currentRoute.notes = value;
+              currentRoute.details = value;
+            }
+
+            this.storageService.updateRoute(route.id, currentRoute);
+
+            // Если изменили время отправления, обновляем следующую точку
+            if (field === 'endTime' && currentRoute.dates.endTime) {
+              this.updateNextPointArrival(route.id, currentRoute.dates.startDate, currentRoute.dates.endTime);
+            }
+
+            // Перерисовка для обновления длительности
+            if (field === 'startTime' || field === 'endTime') {
+              this.renderRoutes(app);
+            }
+          }
+        }
+      });
+    });
 
     return div;
   }
-  
+
   /**
-   * Вычисляет продолжительность пребывания между временем прибытия и отправления
-   * @param {string} arrivalTime - Время прибытия в формате HH:MM
-   * @param {string} departureTime - Время отправления в формате HH:MM
-   * @returns {Object} Объект с часами и минутами
+   * Обновляет время прибытия в следующей точке после изменения времени отправления
+   * @param {string} routeId - ID текущей точки
+   * @param {string} currentDate - Текущая дата
+   * @param {string} departureTime - Новое время отправления
    */
-  calculateStayDuration(arrivalTime, departureTime) {
-    // Разбиваем строки времени на часы и минуты
-    const [arrivalHours, arrivalMinutes] = arrivalTime.split(':').map(Number);
-    const [departureHours, departureMinutes] = departureTime.split(':').map(Number);
-    
-    // Конвертируем в минуты
-    const arrivalTotalMinutes = arrivalHours * 60 + arrivalMinutes;
-    const departureTotalMinutes = departureHours * 60 + departureMinutes;
-    
-    // Вычисляем разницу (учитываем случай, когда время отправления следующего дня)
-    let durationMinutes = departureTotalMinutes - arrivalTotalMinutes;
-    if (durationMinutes < 0) {
-      durationMinutes += 24 * 60; // Прибавляем 24 часа в минутах
-    }
-    
-    // Конвертируем обратно в часы и минуты
-    const hours = Math.floor(durationMinutes / 60);
-    const minutes = durationMinutes % 60;
-    
-    return { hours, minutes };
-  }
-  
-  /**
-   * Обрабатывает редактирование времени в карточке
-   * @param {string} routeId - ID маршрута для редактирования
-   */
-  handleEditTime(routeId) {
-    const card = document.querySelector(`[data-route-id="${routeId}"]`);
-    if (!card) return;
-    
-    // Находим элементы времени
-    const arrivalDisplay = card.querySelector(`#arrival-${routeId} .time-display`);
-    const arrivalInput = card.querySelector(`#arrival-input-${routeId}`);
-    const departureDisplay = card.querySelector(`#departure-${routeId} .time-display`);
-    const departureInput = card.querySelector(`#departure-input-${routeId}`);
-    
-    // Переключаем видимость элементов
-    arrivalDisplay.classList.toggle('hidden');
-    arrivalInput.classList.toggle('hidden');
-    departureDisplay.classList.toggle('hidden');
-    departureInput.classList.toggle('hidden');
-    
-    // Если мы скрываем инпуты, сохраняем изменения
-    if (arrivalInput.classList.contains('hidden') && departureInput.classList.contains('hidden')) {
-      // Получаем новые значения
-      const newArrivalTime = arrivalInput.value;
-      const newDepartureTime = departureInput.value;
+  updateNextPointArrival(routeId, currentDate, departureTime) {
+    const sortedRoutes = [...this.routes].sort((a, b) => {
+      const dateA = new Date(`${a.dates.startDate}T${a.dates.startTime || '00:00'}`);
+      const dateB = new Date(`${b.dates.startDate}T${b.dates.startTime || '00:00'}`);
+      return dateA - dateB;
+    });
+
+    const currentIndex = sortedRoutes.findIndex(r => r.id === routeId);
+    if (currentIndex >= 0 && currentIndex < sortedRoutes.length - 1) {
+      const nextRoute = sortedRoutes[currentIndex + 1];
       
-      // Обновляем данные маршрута
-      const route = this.getRouteById(routeId);
-      if (route) {
-        route.dates.startTime = newArrivalTime;
-        route.dates.endTime = newDepartureTime;
-        
-        // Сохраняем изменения
-        this.storageService.updateRoute(routeId, route);
-        
-        // Обновляем отображение
-        this.renderRoutes();
+      // Копируем дату отправления как дату прибытия следующей точки
+      // Если время отправления позже времени прибытия следующей точки, добавляем день
+      let newDate = currentDate;
+      const [depH, depM] = departureTime.split(':').map(Number);
+      const [nextArrH, nextArrM] = (nextRoute.dates.startTime || '00:00').split(':').map(Number);
+      
+      if (depH > nextArrH || (depH === nextArrH && depM > nextArrM)) {
+        // Добавляем день к дате прибытия
+        const dateObj = new Date(currentDate);
+        dateObj.setDate(dateObj.getDate() + 1);
+        newDate = dateObj.toISOString().split('T')[0];
       }
+      
+      // Обновляем следующую точку
+      nextRoute.dates.startDate = newDate;
+      nextRoute.dates.startTime = departureTime;
+      this.storageService.updateRoute(nextRoute.id, nextRoute);
     }
+  }
+
+  /**
+   * Создаёт блок перехода между точками
+   * @param {Route} fromRoute - Откуда
+   * @param {Route} toRoute - Куда
+   * @param {Object} app - Ссылка на приложение
+   * @returns {HTMLElement} Элемент перехода
+   */
+  createTransitionBlock(fromRoute, toRoute, app) {
+    const div = document.createElement('div');
+    div.className = 'transition-block';
+
+    // Рассчитываем длительность перехода
+    const fromDateTime = new Date(`${fromRoute.dates.startDate}T${fromRoute.dates.endTime || '00:00'}`);
+    const toDateTime = new Date(`${toRoute.dates.startDate}T${toRoute.dates.startTime || '00:00'}`);
     
-    // Если мы показываем инпуты, фокусируемся на первом
-    if (!arrivalInput.classList.contains('hidden')) {
-      arrivalInput.focus();
-    }
+    let transitionMinutes = Math.floor((toDateTime - fromDateTime) / 60000);
+    if (transitionMinutes < 0) transitionMinutes += 24 * 60;
+    
+    const transHours = Math.floor(transitionMinutes / 60);
+    const transMins = transitionMinutes % 60;
+
+    div.innerHTML = `
+      <div class="transition-arrow">
+        <i class="fas fa-arrow-down"></i>
+      </div>
+      <div class="transition-info">
+        <span class="transition-duration">
+          <i class="fas fa-clock"></i> ${transHours}ч ${transMins}м
+        </span>
+        <button class="edit-transition-btn" data-from="${fromRoute.id}" data-to="${toRoute.id}">
+          <i class="fas fa-edit"></i>
+        </button>
+      </div>
+    `;
+
+    const editBtn = div.querySelector('.edit-transition-btn');
+    editBtn.addEventListener('click', () => {
+      // Пока просто выводим информацию
+      console.log('Редактирование перехода:', fromRoute.destination.name, '→', toRoute.destination.name);
+    });
+
+    return div;
   }
 
   /**
-   * Обрабатывает удаление маршрута
-   * @param {string} routeId - ID маршрута для удаления
+   * Обновляет панель сводки
    */
-  handleDeleteRoute(routeId) {
-    if (confirm('Вы уверены, что хотите удалить этот маршрут?')) {
-      if (this.deleteRoute(routeId)) {
-        this.renderRoutes(); // Обновляем список
-        this.showSuccessMessage('Маршрут успешно удален!');
+  updateSummary() {
+    const summaryPanel = document.getElementById('summaryPanel');
+    if (!summaryPanel) return;
+
+    const totalPoints = this.routes.length;
+    
+    // Рассчитываем общую длительность
+    let totalMinutes = 0;
+    const sortedRoutes = [...this.routes].sort((a, b) => {
+      const dateA = new Date(`${a.dates.startDate}T${a.dates.startTime || '00:00'}`);
+      const dateB = new Date(`${b.dates.startDate}T${b.dates.startTime || '00:00'}`);
+      return dateA - dateB;
+    });
+
+    if (sortedRoutes.length > 0) {
+      const first = sortedRoutes[0];
+      const last = sortedRoutes[sortedRoutes.length - 1];
+      
+      const firstDateTime = new Date(`${first.dates.startDate}T${first.dates.startTime || '00:00'}`);
+      const lastDateTime = new Date(`${last.dates.startDate}T${last.dates.endTime || '00:00'}`);
+      
+      totalMinutes = Math.floor((lastDateTime - firstDateTime) / 60000);
+    }
+
+    const totalHours = Math.floor(totalMinutes / 60);
+    const totalDays = Math.floor(totalHours / 24);
+    const remainingHours = totalHours % 24;
+    const remainingMins = totalMinutes % 60;
+
+    let durationText = '—';
+    if (totalMinutes > 0) {
+      if (totalDays > 0) {
+        durationText = `${totalDays} дн ${remainingHours}ч ${remainingMins}м`;
+      } else if (totalHours > 0) {
+        durationText = `${totalHours}ч ${remainingMins}м`;
       } else {
-        this.showErrorMessage('Ошибка при удалении маршрута');
+        durationText = `${remainingMins}м`;
       }
     }
-  }
 
-  /**
-   * Обрабатывает редактирование маршрута
-   * @param {string} routeId - ID маршрута для редактирования
-   */
-  handleEditRoute(routeId) {
-    // Пока просто выводим информацию о маршруте в консоль
-    const route = this.getRouteById(routeId);
-    if (route) {
-      console.log('Редактирование маршрута:', route);
-      // Здесь будет логика для открытия формы редактирования
-      this.showInfoMessage('Функция редактирования будет реализована позже');
-    }
+    summaryPanel.innerHTML = `
+      <span><i class="fas fa-route"></i> Общая длительность: ${durationText}</span>
+      <span><i class="fas fa-location-dot"></i> Всего точек: ${totalPoints}</span>
+    `;
   }
 
   /**
@@ -347,82 +448,42 @@ export class RouteController {
   }
 
   /**
-   * Показывает сообщение об успешном выполнении
-   * @param {string} message - Текст сообщения
-   */
-  showSuccessMessage(message) {
-    this.showMessage(message, 'success');
-  }
-
-  /**
-   * Показывает информационное сообщение
-   * @param {string} message - Текст сообщения
-   */
-  showInfoMessage(message) {
-    this.showMessage(message, 'info');
-  }
-
-  /**
    * Показывает сообщение
    * @param {string} message - Текст сообщения
-   * @param {string} type - Тип сообщения (error, success, info)
+   * @param {string} type - Тип сообщения
    */
   showMessage(message, type) {
-    // Создаем или находим контейнер для сообщений
     let messageContainer = document.getElementById('message-container');
     if (!messageContainer) {
       messageContainer = document.createElement('div');
       messageContainer.id = 'message-container';
-      messageContainer.style.position = 'fixed';
-      messageContainer.style.top = '20px';
-      messageContainer.style.right = '20px';
-      messageContainer.style.zIndex = '1000';
-      messageContainer.style.maxWidth = '400px';
+      messageContainer.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 2000;
+        max-width: 400px;
+      `;
       document.body.appendChild(messageContainer);
     }
 
-    // Создаем элемент сообщения
     const messageEl = document.createElement('div');
     messageEl.textContent = message;
-    messageEl.style.padding = '10px 15px';
-    messageEl.style.marginBottom = '10px';
-    messageEl.style.borderRadius = '4px';
-    messageEl.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
-    messageEl.style.opacity = '0';
-    messageEl.style.transition = 'opacity 0.3s ease-in-out';
+    messageEl.style.cssText = `
+      padding: 10px 15px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      opacity: 0;
+      transition: opacity 0.3s;
+      background: ${type === 'error' ? '#ffebee' : '#e8f5e8'};
+      color: ${type === 'error' ? '#c62828' : '#2e7d32'};
+      border-left: 4px solid ${type === 'error' ? '#c62828' : '#2e7d32'};
+    `;
 
-    // Устанавливаем стиль в зависимости от типа
-    switch (type) {
-      case 'error':
-        messageEl.style.backgroundColor = '#ffebee';
-        messageEl.style.color = '#c62828';
-        messageEl.style.borderLeft = '4px solid #c62828';
-        break;
-      case 'success':
-        messageEl.style.backgroundColor = '#e8f5e8';
-        messageEl.style.color = '#2e7d32';
-        messageEl.style.borderLeft = '4px solid #2e7d32';
-        break;
-      case 'info':
-        messageEl.style.backgroundColor = '#e3f2fd';
-        messageEl.style.color = '#1565c0';
-        messageEl.style.borderLeft = '4px solid #1565c0';
-        break;
-      default:
-        messageEl.style.backgroundColor = '#fff3e0';
-        messageEl.style.color = '#e65100';
-        messageEl.style.borderLeft = '4px solid #e65100';
-    }
-
-    // Добавляем в контейнер
     messageContainer.appendChild(messageEl);
 
-    // Анимация появления
-    setTimeout(() => {
-      messageEl.style.opacity = '1';
-    }, 10);
-
-    // Автоматически удаляем сообщение через 5 секунд
+    setTimeout(() => { messageEl.style.opacity = '1'; }, 10);
     setTimeout(() => {
       messageEl.style.opacity = '0';
       setTimeout(() => {
