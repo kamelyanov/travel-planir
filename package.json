@@ -1,0 +1,23 @@
+{
+  "name": "travel-planner",
+  "version": "1.0.0",
+  "description": "Приложение для планирования маршрутов путешествий",
+  "main": "src/main.js",
+  "type": "module",
+  "scripts": {
+    "start": "http-server -o",
+    "dev": "http-server -o -c-1",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "travel",
+    "planner",
+    "routes",
+    "trip"
+  ],
+  "author": "Travel Planner Team",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

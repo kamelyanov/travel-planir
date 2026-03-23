@@ -11,27 +11,27 @@
         <h1>Планировщик маршрутов</h1>
         <form id="routeForm" aria-label="Форма добавления маршрута">
             <div class="input-group">
-                <input type="text" id="location" required placeholder=" " aria-label="Место назначения">
+                <input type="text" id="location" name="location" required placeholder=" " aria-label="Место назначения">
                 <label for="location">Место назначения</label>
             </div>
             <div class="input-group">
-                <input type="date" id="arrivalDate" required aria-label="Дата прибытия">
+                <input type="date" id="arrivalDate" name="arrivalDate" required aria-label="Дата прибытия">
                 <label for="arrivalDate">Дата прибытия</label>
             </div>
             <div class="input-group">
-                <input type="time" id="arrivalTime" required aria-label="Время прибытия">
+                <input type="time" id="arrivalTime" name="arrivalTime" required aria-label="Время прибытия">
                 <label for="arrivalTime">Время прибытия</label>
             </div>
             <div class="input-group">
-                <input type="time" id="departureTime" required aria-label="Время отправления">
+                <input type="time" id="departureTime" name="departureTime" required aria-label="Время отправления">
                 <label for="departureTime">Время отправления</label>
             </div>
             <div class="input-group">
-                <input type="text" id="duration" required placeholder="Чч:Мм" aria-label="Длительность">
+                <input type="text" id="duration" name="duration" required placeholder="Чч:Мм" aria-label="Длительность">
                 <label for="duration">Длительность</label>
             </div>
             <div class="input-group">
-                <textarea id="details" placeholder=" " aria-label="Примечания"></textarea>
+                <textarea id="details" name="details" placeholder=" " aria-label="Примечания"></textarea>
                 <label for="details">Примечания</label>
             </div>
             <div class="editable-options">
@@ -46,8 +46,45 @@
             </div>
             <button type="submit">Добавить маршрут</button>
         </form>
-        <ul id="routeList"></ul>
+        <div id="routeList"></div>
+        
+        <!-- Модальное окно для добавления новой точки -->
+        <div id="addLocationModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Добавить точку маршрута</h2>
+                    <button class="close-btn">&times;</button>
+                </div>
+                <form id="addLocationForm">
+                    <div class="input-group">
+                        <input type="text" id="newLocation" name="newLocation" required placeholder=" " aria-label="Место назначения">
+                        <label for="newLocation">Место назначения</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="date" id="newArrivalDate" name="newArrivalDate" required aria-label="Дата прибытия">
+                        <label for="newArrivalDate">Дата прибытия</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="time" id="newArrivalTime" name="newArrivalTime" required aria-label="Время прибытия">
+                        <label for="newArrivalTime">Время прибытия</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="time" id="newDepartureTime" name="newDepartureTime" required aria-label="Время отправления">
+                        <label for="newDepartureTime">Время отправления</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="newDuration" name="newDuration" required placeholder="Чч:Мм" aria-label="Длительность">
+                        <label for="newDuration">Длительность</label>
+                    </div>
+                    <div class="input-group">
+                        <textarea id="newDetails" name="newDetails" placeholder=" " aria-label="Примечания"></textarea>
+                        <label for="newDetails">Примечания</label>
+                    </div>
+                    <button type="submit">Добавить точку</button>
+                </form>
+            </div>
+        </div>
     </main>
-    <script src="script.js"></script>
+    <script type="module" src="src/main.js"></script>
 </body>
 </html>
