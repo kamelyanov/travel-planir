@@ -23,7 +23,13 @@ export class Route {
       startTime: data.dates?.startTime || '',
       endTime: data.dates?.endTime || ''
     };
-    
+
+    // Длительность в пути до этой точки
+    this.travelDuration = {
+      hours: data.travelDuration?.hours || 0,
+      minutes: data.travelDuration?.minutes || 0
+    };
+
     // Длительность
     this.duration = {
       hours: data.duration?.hours || 0,
@@ -59,7 +65,10 @@ export class Route {
     this.details = data.details || '';
     this.notes = data.notes || '';
     this.rating = data.rating || 0;
-    
+
+    // Флаг закреплённого времени прибытия
+    this.isFixedTime = data.isFixedTime || false;
+
     // Погода
     this.weather = {
       condition: data.weather?.condition || '',
@@ -156,6 +165,7 @@ export class Route {
       title: this.title,
       destination: this.destination,
       dates: this.dates,
+      travelDuration: this.travelDuration,
       duration: this.duration,
       transportation: this.transportation,
       accommodation: this.accommodation,
@@ -168,6 +178,7 @@ export class Route {
       status: this.status,
       tags: this.tags,
       priority: this.priority,
+      isFixedTime: this.isFixedTime,
       contacts: this.contacts
     };
   }

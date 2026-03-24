@@ -174,9 +174,10 @@ export function validateRoute(routeData) {
   }
 
   // Проверяем обязательные поля
-  if (!isValidName(routeData.destination?.name)) {
-    errors.push('Название места назначения обязательно и должно быть действительным');
-  }
+  // Название точки теперь необязательное (можно сохранить без названия)
+  // if (!isValidName(routeData.destination?.name)) {
+  //   errors.push('Название места назначения обязательно и должно быть действительным');
+  // }
 
   if (!isValidDate(routeData.dates?.startDate)) {
     errors.push('Дата начала обязательна и должна быть действительной');
@@ -190,13 +191,13 @@ export function validateRoute(routeData) {
     errors.push('Время окончания обязательно и должно быть в формате ЧЧ:ММ');
   }
 
-  // Проверяем, что время окончания позже времени начала
+  // Проверяем, что время окончания не раньше времени начала
   if (routeData.dates?.startTime && routeData.dates?.endTime) {
     const start = new Date(`1970-01-01T${routeData.dates.startTime}:00`);
     const end = new Date(`1970-01-01T${routeData.dates.endTime}:00`);
-    
-    if (start >= end) {
-      errors.push('Время окончания должно быть позже времени начала');
+
+    if (start > end) {
+      errors.push('Время окончания должно быть не раньше времени начала');
     }
   }
 

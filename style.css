@@ -122,10 +122,12 @@ h1 small {
     align-items: center;
     text-align: center;
     transition: all 0.2s;
+    position: relative;
 }
 
 .time-badge.arrival {
     align-items: flex-start;
+    position: relative;
 }
 
 .time-badge.departure {
@@ -221,6 +223,61 @@ h1 small {
 
 .card-header .pin-btn.active {
     color: #f59e0b;
+}
+
+.time-badge.arrival.fixed {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    position: relative;
+}
+
+.time-badge .fix-time-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #94a3b8;
+    padding: 2px 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    font-size: 0.8rem;
+    margin-left: 4px;
+}
+
+.time-badge .fix-time-btn:hover {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+}
+
+.time-badge .fix-time-btn.active {
+    color: #10b981;
+}
+
+.time-badge .fixed-icon {
+    margin-left: 4px;
+    font-size: 0.7em;
+    color: #10b981;
+}
+
+.travel-duration-input {
+    font-weight: 500;
+    font-size: 0.9rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 10px;
+    background: #f8fafc;
+    color: #334155;
+    flex: 1;
+    transition: all 0.15s;
+}
+
+.travel-duration-input:focus {
+    border-color: #3b82f6;
+    background: white;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .point-name-input {
@@ -368,20 +425,21 @@ h1 small {
 
 /* Заметки */
 .notes-area {
-    padding: 6px 12px 12px 78px;
+    padding: 4px 12px 8px 78px;
 }
 
 .notes-area textarea {
     width: 100%;
     border: 1px solid #e2e8f0;
     border-radius: 14px;
-    padding: 10px 12px;
+    padding: 6px 10px;
     font-size: 0.75rem;
     resize: vertical;
     font-family: inherit;
     background: #fafcff;
     transition: all 0.2s;
-    line-height: 1.5;
+    line-height: 1.4;
+    min-height: 40px;
 }
 
 .notes-area textarea:focus {
@@ -391,9 +449,42 @@ h1 small {
     background: white;
 }
 
+/* Контейнер для кнопок добавления точек */
+.add-point-buttons {
+    display: flex;
+    gap: 8px;
+    margin: 6px 12px 12px 78px;
+}
+
+/* Кнопка добавления перед */
+.add-before-btn {
+    flex: 1;
+    background: linear-gradient(135deg, #eff3f8 0%, #e2e8f0 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 30px;
+    padding: 7px 12px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #2c5f8a;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    letter-spacing: 0.2px;
+}
+
+.add-before-btn:hover {
+    background: linear-gradient(135deg, #e2e8f0 0%, #d1d9e6 100%);
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+}
+
 /* Кнопка добавления после */
 .add-after-btn {
-    margin: 6px 12px 12px 78px;
+    flex: 1;
     background: linear-gradient(135deg, #eff3f8 0%, #e2e8f0 100%);
     border: 1px solid #e2e8f0;
     border-radius: 30px;
@@ -444,6 +535,57 @@ h1 small {
     display: grid;
     grid-template-columns: 2fr 1fr;
     gap: 12px;
+}
+
+/* Предупреждение о времени прибытия */
+.arrival-warning {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    margin: 12px 20px;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 2px solid #f59e0b;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
+.arrival-warning i {
+    font-size: 1.5rem;
+    color: #f59e0b;
+}
+
+.arrival-warning .warning-text {
+    flex: 1;
+}
+
+.arrival-warning .warning-text strong {
+    display: block;
+    color: #92400e;
+    margin-bottom: 4px;
+}
+
+.arrival-warning .warning-text p {
+    margin: 2px 0;
+    font-size: 0.85rem;
+    color: #78350f;
+}
+
+.arrival-warning .btn-dismiss {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #92400e;
+    padding: 4px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.arrival-warning .btn-dismiss:hover {
+    background: rgba(146, 64, 14, 0.1);
 }
 
 .datetime-inputs {
@@ -527,7 +669,7 @@ h1 small {
     box-shadow: 0 2px 6px rgba(0,0,0,0.04);
 }
 
-.transition-duration, .transition-cost {
+.transition-duration-input {
     background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
     padding: 3px 10px;
     border-radius: 20px;
@@ -535,26 +677,16 @@ h1 small {
     font-weight: 600;
     color: #4338ca;
     border: 1px solid rgba(99,102,241,0.15);
-}
-
-.edit-transition-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #64748b;
-    font-size: 0.8rem;
-    padding: 5px;
-    border-radius: 50%;
+    text-align: center;
+    min-width: 80px;
     transition: all 0.15s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
-.edit-transition-btn:hover {
-    color: #3b82f6;
-    background: #eef2ff;
-    transform: scale(1.1);
+.transition-duration-input:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    background: white;
 }
 
 /* Глобальное добавление */

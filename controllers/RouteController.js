@@ -23,12 +23,14 @@ export class RouteController {
   /**
    * Добавляет новый маршрут
    * @param {Object} routeData - Данные маршрута
+   * @param {string|null} referenceRouteId - ID опорной точки
+   * @param {string} position - 'before' или 'after'
    * @returns {Route|null} Добавленный маршрут или null
    */
-  addRoute(routeData) {
+  addRoute(routeData, referenceRouteId = null, position = 'after') {
     try {
       const route = new Route(routeData);
-      
+
       if (!route.isValid()) {
         const validation = validateRoute(routeData);
         if (!validation.isValid) {
@@ -37,7 +39,23 @@ export class RouteController {
         }
       }
 
-      this.routes.push(route);
+      if (referenceRouteId) {
+        // Вставляем точку перед или после опорной
+        const refIndex = this.routes.findIndex(r => r.id === referenceRouteId);
+        if (refIndex !== -1) {
+          if (position === 'before') {
+            this.routes.splice(refIndex, 0, route);
+          } else {
+            this.routes.splice(refIndex + 1, 0, route);
+          }
+        } else {
+          this.routes.push(route);
+        }
+      } else {
+        // Добавляем в конец
+        this.routes.push(route);
+      }
+      
       this.storageService.addRoute(route);
       return route;
     } catch (error) {
@@ -136,9 +154,13 @@ export class RouteController {
     
     const arrivalDateTime = new Date(`${arrivalDate}T${arrivalTime}`);
     const departureDateTime = new Date(`${departureDate}T${departureTime}`);
-    
+
     let totalMinutes = Math.floor((departureDateTime - arrivalDateTime) / 60000);
-    if (totalMinutes < 0) totalMinutes += 24 * 60 * 60; // Добавляем сутки если отрицательное
+    
+    // Если разница отрицательная, считаем что отправление на следующий день
+    if (totalMinutes < 0) {
+      totalMinutes += 24 * 60;
+    }
 
     const days = Math.floor(totalMinutes / (24 * 60));
     const remainingMinutesAfterDays = totalMinutes % (24 * 60);
@@ -165,6 +187,12 @@ export class RouteController {
 
     timelineTrack.innerHTML = '';
 
+    // Показываем/скрываем кнопку добавления точки
+    const addPointBtn = document.getElementById('addPointBtn');
+    if (addPointBtn) {
+      addPointBtn.style.display = this.routes.length === 0 ? 'inline-flex' : 'none';
+    }
+
     if (this.routes.length === 0) {
       timelineTrack.innerHTML = `
         <div style="text-align: center; color: #64748b; padding: 40px;">
@@ -185,7 +213,7 @@ export class RouteController {
 
     sortedRoutes.forEach((route, index) => {
       // Добавляем карточку точки
-      const cardElement = this.createCheckpointCard(route, app);
+      const cardElement = this.createCheckpointCard(route, app, index);
       timelineTrack.appendChild(cardElement);
 
       // Добавляем переход (кроме последней точки)
@@ -203,9 +231,10 @@ export class RouteController {
    * Создаёт карточку точки
    * @param {Route} route - Маршрут
    * @param {Object} app - Ссылка на приложение
+   * @param {number} index - Индекс маршрута в списке
    * @returns {HTMLElement} Элемент карточки
    */
-  createCheckpointCard(route, app) {
+  createCheckpointCard(route, app, index = 0) {
     const div = document.createElement('div');
     div.className = 'checkpoint-card';
     if (route.priority === 'high') {
@@ -238,12 +267,32 @@ export class RouteController {
       durationDisplay = `${stayDuration.minutes} м`;
     }
 
+    // Для первой карточки не показываем поле прибытия
+    const isFirstCard = index === 0;
+    const arrivalSection = isFirstCard ? '' : `
+        <div class="time-row">
+          <label><i class="fas fa-clock"></i> Прибытие:</label>
+          <div style="display: flex; gap: 6px; flex: 1;">
+            <input type="date" value="${route.dates.startDate || ''}"
+              data-route-id="${route.id}" data-field="startDate" style="flex: 1;">
+            <input type="time" value="${route.dates.startTime || ''}"
+              data-route-id="${route.id}" data-field="startTime" style="flex: 1;">
+          </div>
+        </div>
+    `;
+
     div.innerHTML = `
       <div class="checkpoint-time-sidebar">
-        <div class="time-badge arrival">
+        ${!isFirstCard ? `
+        <div class="time-badge arrival ${route.isFixedTime ? 'fixed' : ''}">
           <span class="time-value">${arrivalTimeDisplay}</span>
           <span class="time-label">Прибытие</span>
+          <button class="fix-time-btn ${route.isFixedTime ? 'active' : ''}"
+            data-route-id="${route.id}" title="Закрепить время прибытия">
+            <i class="fas fa-lock"></i>
+          </button>
         </div>
+        ` : ''}
         <div class="time-badge duration">
           <span class="duration-value">${durationDisplay}</span>
         </div>
@@ -258,9 +307,6 @@ export class RouteController {
             data-route-id="${route.id}" title="Закрепить">
             <i class="fas fa-thumbtack"></i>
           </button>
-          <button class="edit-btn" data-route-id="${route.id}" title="Редактировать">
-            <i class="fas fa-edit"></i>
-          </button>
         </div>
         <div class="card-actions-right">
           <button class="delete-btn" data-route-id="${route.id}" title="Удалить">
@@ -269,14 +315,22 @@ export class RouteController {
         </div>
       </div>
       <div class="time-group">
+        ${arrivalSection}
+        ${!isFirstCard ? `
         <div class="time-row">
-          <label><i class="fas fa-clock"></i> Прибытие:</label>
-          <div style="display: flex; gap: 6px; flex: 1;">
-            <input type="date" value="${route.dates.startDate || ''}"
-              data-route-id="${route.id}" data-field="startDate" style="flex: 1;">
-            <input type="time" value="${route.dates.startTime || ''}"
-              data-route-id="${route.id}" data-field="startTime" style="flex: 1;">
-          </div>
+          <label><i class="fas fa-road"></i> Время в пути до этой точки:</label>
+          <input type="text" class="travel-duration-input" value="${route.travelDuration?.hours || 0}ч ${route.travelDuration?.minutes || 0}м"
+            data-route-id="${route.id}" data-field="travelDuration" placeholder="1ч 30м">
+        </div>
+        ` : ''}
+        <div class="time-row">
+          <label><i class="fas fa-map-marker-alt"></i> Название точки:</label>
+          <input type="text" class="point-name-input-inline" value="${route.destination.name || ''}"
+            data-route-id="${route.id}" data-field="name" placeholder="Название места или адрес">
+        </div>
+        <div class="time-row">
+          <label><i class="fas fa-hourglass-half"></i> Длительность пребывания:</label>
+          <input type="text" value="${durationDisplay}" readonly class="readonly-field" style="flex: 1;">
         </div>
         <div class="time-row">
           <label><i class="fas fa-clock"></i> Отправление:</label>
@@ -287,18 +341,18 @@ export class RouteController {
               data-route-id="${route.id}" data-field="endTime" style="flex: 1;">
           </div>
         </div>
-        <div class="time-row">
-          <label><i class="fas fa-tag"></i> Название:</label>
-          <input type="text" class="point-name-input-inline" value="${route.destination.name || ''}"
-            data-route-id="${route.id}" data-field="name" placeholder="Название точки">
-        </div>
       </div>
       <div class="notes-area">
         <textarea placeholder="Заметки..." data-route-id="${route.id}" data-field="notes">${route.notes || route.details || ''}</textarea>
       </div>
-      <button class="add-after-btn" data-route-id="${route.id}">
-        <i class="fas fa-plus"></i> Добавить точку после этой
-      </button>
+      <div class="add-point-buttons">
+        <button class="add-before-btn" data-route-id="${route.id}">
+          <i class="fas fa-plus"></i> Добавить точку перед этой
+        </button>
+        <button class="add-after-btn" data-route-id="${route.id}">
+          <i class="fas fa-plus"></i> Добавить точку после этой
+        </button>
+      </div>
     `;
 
     // Обработчики
@@ -317,9 +371,24 @@ export class RouteController {
       this.renderRoutes(app);
     });
 
+    const fixTimeBtn = div.querySelector('.fix-time-btn');
+    if (fixTimeBtn) {
+      fixTimeBtn.addEventListener('click', () => {
+        const newIsFixedTime = !route.isFixedTime;
+        this.updateRoute(route.id, { isFixedTime: newIsFixedTime });
+        route.isFixedTime = newIsFixedTime;
+        this.renderRoutes(app);
+      });
+    }
+
     const addAfterBtn = div.querySelector('.add-after-btn');
     addAfterBtn.addEventListener('click', () => {
-      app.showNewPointCard(route.id);
+      app.addNewPoint(route.id, 'after');
+    });
+
+    const addBeforeBtn = div.querySelector('.add-before-btn');
+    addBeforeBtn.addEventListener('click', () => {
+      app.addNewPoint(route.id, 'before');
     });
 
     // Inline-редактирование
@@ -335,6 +404,53 @@ export class RouteController {
             if (field === 'name') {
               currentRoute.destination.name = value;
               currentRoute.destination.address = value;
+              // Если это был черновик и название заполнено, меняем статус на planned
+              if (currentRoute.status === 'draft' && value.trim() !== '') {
+                currentRoute.status = 'planned';
+              }
+            } else if (field === 'travelDuration') {
+              // Парсим длительность в пути
+              const travelMinutes = app.parseDuration(value);
+              currentRoute.travelDuration = {
+                hours: Math.floor(travelMinutes / 60),
+                minutes: travelMinutes % 60
+              };
+
+              const sortedRoutes = [...this.routes].sort((a, b) => {
+                const dateA = new Date(`${a.dates.startDate}T${a.dates.startTime || '00:00'}`);
+                const dateB = new Date(`${b.dates.startDate}T${b.dates.startTime || '00:00'}`);
+                return dateA - dateB;
+              });
+              const currentIndex = sortedRoutes.findIndex(r => r.id === route.id);
+              
+              if (currentIndex > 0) {
+                const prevRoute = sortedRoutes[currentIndex - 1];
+                
+                // Если время прибытия текущей точки закреплённое, пересчитываем время отправления предыдущей
+                if (currentRoute.isFixedTime && currentRoute.dates.startTime && currentRoute.dates.startDate) {
+                  const arrivalDateTime = new Date(`${currentRoute.dates.startDate}T${currentRoute.dates.startTime}`);
+                  const departureDateTime = new Date(arrivalDateTime.getTime() - travelMinutes * 60000);
+                  
+                  const departureDate = departureDateTime.toISOString().split('T')[0];
+                  const departureH = String(departureDateTime.getHours()).padStart(2, '0');
+                  const departureM = String(departureDateTime.getMinutes()).padStart(2, '0');
+                  
+                  prevRoute.dates.endDate = departureDate;
+                  prevRoute.dates.endTime = `${departureH}:${departureM}`;
+                  this.storageService.updateRoute(prevRoute.id, prevRoute);
+                } else {
+                  // Иначе пересчитываем время прибытия текущей точки
+                  if (prevRoute && prevRoute.dates.endTime && prevRoute.dates.endDate) {
+                    const prevDepartureDateTime = new Date(`${prevRoute.dates.endDate}T${prevRoute.dates.endTime}`);
+                    const arrivalDateTime = new Date(prevDepartureDateTime.getTime() + travelMinutes * 60000);
+                    const arrivalDate = arrivalDateTime.toISOString().split('T')[0];
+                    const arrivalH = String(arrivalDateTime.getHours()).padStart(2, '0');
+                    const arrivalM = String(arrivalDateTime.getMinutes()).padStart(2, '0');
+                    currentRoute.dates.startDate = arrivalDate;
+                    currentRoute.dates.startTime = `${arrivalH}:${arrivalM}`;
+                  }
+                }
+              }
             } else if (field === 'startDate') {
               currentRoute.dates.startDate = value;
             } else if (field === 'endDate') {
@@ -352,11 +468,11 @@ export class RouteController {
 
             // Если изменили время отправления, обновляем следующую точку
             if ((field === 'endTime' || field === 'endDate') && currentRoute.dates.endTime) {
-              this.updateNextPointArrival(route.id, currentRoute.dates.endDate || currentRoute.dates.startDate, currentRoute.dates.endTime);
+              this.updateNextPointArrival(route.id, currentRoute.dates.endDate || currentRoute.dates.startDate, currentRoute.dates.endTime, app);
             }
 
             // Перерисовка для обновления длительности
-            if (field === 'startTime' || field === 'endTime' || field === 'startDate' || field === 'endDate') {
+            if (field === 'startTime' || field === 'endTime' || field === 'startDate' || field === 'endDate' || field === 'travelDuration') {
               this.renderRoutes(app);
             }
           }
@@ -372,8 +488,9 @@ export class RouteController {
    * @param {string} routeId - ID текущей точки
    * @param {string} currentDate - Текущая дата
    * @param {string} departureTime - Новое время отправления
+   * @param {Object} app - Ссылка на приложение для предупреждений
    */
-  updateNextPointArrival(routeId, currentDate, departureTime) {
+  updateNextPointArrival(routeId, currentDate, departureTime, app) {
     const sortedRoutes = [...this.routes].sort((a, b) => {
       const dateA = new Date(`${a.dates.startDate}T${a.dates.startTime || '00:00'}`);
       const dateB = new Date(`${b.dates.startDate}T${b.dates.startTime || '00:00'}`);
@@ -383,23 +500,44 @@ export class RouteController {
     const currentIndex = sortedRoutes.findIndex(r => r.id === routeId);
     if (currentIndex >= 0 && currentIndex < sortedRoutes.length - 1) {
       const nextRoute = sortedRoutes[currentIndex + 1];
-      
-      // Копируем дату отправления как дату прибытия следующей точки
-      // Если время отправления позже времени прибытия следующей точки, добавляем день
-      let newDate = currentDate;
-      const [depH, depM] = departureTime.split(':').map(Number);
-      const [nextArrH, nextArrM] = (nextRoute.dates.startTime || '00:00').split(':').map(Number);
-      
-      if (depH > nextArrH || (depH === nextArrH && depM > nextArrM)) {
-        // Добавляем день к дате прибытия
-        const dateObj = new Date(currentDate);
-        dateObj.setDate(dateObj.getDate() + 1);
-        newDate = dateObj.toISOString().split('T')[0];
+
+      // Если время прибытия следующей точки закреплённое, не пересчитываем его
+      if (nextRoute.isFixedTime) {
+        // Проверяем, успеваем ли мы к закреплённому времени
+        const travelHours = nextRoute.travelDuration?.hours || 0;
+        const travelMinutes = nextRoute.travelDuration?.minutes || 0;
+        const totalTravelMinutes = travelHours * 60 + travelMinutes;
+
+        const departureDateTime = new Date(`${currentDate}T${departureTime}`);
+        const expectedArrivalDateTime = new Date(departureDateTime.getTime() + totalTravelMinutes * 60000);
+
+        const fixedArrivalDateTime = new Date(`${nextRoute.dates.startDate}T${nextRoute.dates.startTime}`);
+
+        if (expectedArrivalDateTime > fixedArrivalDateTime) {
+          // Показываем предупреждение
+          app.showArrivalWarning(nextRoute.destination.name, expectedArrivalDateTime, fixedArrivalDateTime);
+        }
+        return;
       }
-      
+
+      // Получаем длительность в пути до следующей точки
+      const travelHours = nextRoute.travelDuration?.hours || 0;
+      const travelMinutes = nextRoute.travelDuration?.minutes || 0;
+      const totalTravelMinutes = travelHours * 60 + travelMinutes;
+
+      // Создаём дату отправления из текущей точки
+      const departureDateTime = new Date(`${currentDate}T${departureTime}`);
+
+      // Прибавляем время в пути
+      const arrivalDateTime = new Date(departureDateTime.getTime() + totalTravelMinutes * 60000);
+
+      // Формируем новую дату и время прибытия
+      const newDate = arrivalDateTime.toISOString().split('T')[0];
+      const newTime = `${String(arrivalDateTime.getHours()).padStart(2, '0')}:${String(arrivalDateTime.getMinutes()).padStart(2, '0')}`;
+
       // Обновляем следующую точку
       nextRoute.dates.startDate = newDate;
-      nextRoute.dates.startTime = departureTime;
+      nextRoute.dates.startTime = newTime;
       this.storageService.updateRoute(nextRoute.id, nextRoute);
     }
   }
@@ -430,19 +568,48 @@ export class RouteController {
         <i class="fas fa-arrow-down"></i>
       </div>
       <div class="transition-info">
-        <span class="transition-duration">
-          <i class="fas fa-clock"></i> ${transHours}ч ${transMins}м
-        </span>
-        <button class="edit-transition-btn" data-from="${fromRoute.id}" data-to="${toRoute.id}">
-          <i class="fas fa-edit"></i>
-        </button>
+        <input type="text" class="transition-duration-input" value="${transHours}ч ${transMins}м"
+          data-from="${fromRoute.id}" data-to="${toRoute.id}" placeholder="1ч 30м">
       </div>
     `;
 
-    const editBtn = div.querySelector('.edit-transition-btn');
-    editBtn.addEventListener('click', () => {
-      // Пока просто выводим информацию
-      console.log('Редактирование перехода:', fromRoute.destination.name, '→', toRoute.destination.name);
+    const durationInput = div.querySelector('.transition-duration-input');
+    durationInput.addEventListener('change', (e) => {
+      const travelMinutes = app.parseDuration(e.target.value);
+      const travelHours = Math.floor(travelMinutes / 60);
+      const travelMins = travelMinutes % 60;
+
+      // Обновляем travelDuration в следующей точке (toRoute)
+      toRoute.travelDuration = {
+        hours: travelHours,
+        minutes: travelMins
+      };
+
+      // Если время прибытия следующей точки не закреплённое, пересчитываем его
+      if (!toRoute.isFixedTime) {
+        const fromDepartureDateTime = new Date(`${fromRoute.dates.endDate || fromRoute.dates.startDate}T${fromRoute.dates.endTime || '00:00'}`);
+        const arrivalDateTime = new Date(fromDepartureDateTime.getTime() + travelMinutes * 60000);
+        const arrivalDate = arrivalDateTime.toISOString().split('T')[0];
+        const arrivalH = String(arrivalDateTime.getHours()).padStart(2, '0');
+        const arrivalM = String(arrivalDateTime.getMinutes()).padStart(2, '0');
+
+        toRoute.dates.startDate = arrivalDate;
+        toRoute.dates.startTime = `${arrivalH}:${arrivalM}`;
+      } else {
+        // Если закреплённое, пересчитываем время отправления предыдущей точки
+        const toArrivalDateTime = new Date(`${toRoute.dates.startDate}T${toRoute.dates.startTime}`);
+        const departureDateTime = new Date(toArrivalDateTime.getTime() - travelMinutes * 60000);
+        const departureDate = departureDateTime.toISOString().split('T')[0];
+        const departureH = String(departureDateTime.getHours()).padStart(2, '0');
+        const departureM = String(departureDateTime.getMinutes()).padStart(2, '0');
+
+        fromRoute.dates.endDate = departureDate;
+        fromRoute.dates.endTime = `${departureH}:${departureM}`;
+      }
+
+      this.storageService.updateRoute(toRoute.id, toRoute);
+      this.storageService.updateRoute(fromRoute.id, fromRoute);
+      this.renderRoutes(app);
     });
 
     return div;
