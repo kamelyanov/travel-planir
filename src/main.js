@@ -6,7 +6,9 @@ class TravelPlannerApp {
   constructor() {
     this.storageService = new StorageService();
     this.routeController = new RouteController(this.storageService);
-    this.currentEditId = null;
+    this.insertAfterId = null;
+    this.isEditing = false;
+    this.editId = null;
     this.init();
   }
 
@@ -19,29 +21,36 @@ class TravelPlannerApp {
     // Кнопка добавления точки
     const addPointBtn = document.getElementById('addPointBtn');
     if (addPointBtn) {
-      addPointBtn.addEventListener('click', () => this.openAddModal());
+      addPointBtn.addEventListener('click', () => this.showNewPointCard());
     }
 
-    // Модальное окно
-    const modal = document.getElementById('pointModal');
-    const closeBtn = modal.querySelector('.close');
-    const saveBtn = document.getElementById('savePointModal');
+    // Кнопки новой карточки
+    const cancelBtn = document.getElementById('newPointCancelBtn');
+    const saveBtn = document.getElementById('newPointSaveBtn');
+    const pinBtn = document.getElementById('newPointPinBtn');
 
-    if (closeBtn) {
-      closeBtn.addEventListener('click', () => this.closeModal());
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => this.hideNewPointCard());
     }
 
     if (saveBtn) {
-      saveBtn.addEventListener('click', () => this.saveModal());
+      saveBtn.addEventListener('click', () => this.saveNewPoint());
+    }
+
+    if (pinBtn) {
+      pinBtn.addEventListener('click', () => {
+        pinBtn.classList.toggle('active');
+      });
     }
 
     // Поля для расчёта времени
-    const arrivalInput = document.getElementById('pointArrival');
-    const arrivalDateInput = document.getElementById('pointArrivalDate');
-    const departureInput = document.getElementById('pointDeparture');
-    const departureDateInput = document.getElementById('pointDepartureDate');
-    const stayDurationInput = document.getElementById('pointStayDuration');
-    const travelDurationInput = document.getElementById('pointTravelDuration');
+    const arrivalInput = document.getElementById('newPointArrival');
+    const arrivalDateInput = document.getElementById('newPointArrivalDate');
+    const departureInput = document.getElementById('newPointDeparture');
+    const departureDateInput = document.getElementById('newPointDepartureDate');
+    const stayDurationInput = document.getElementById('newPointStayDuration');
+    const travelDurationInput = document.getElementById('newPointTravelDuration');
+    const nameInput = document.getElementById('newPointName');
 
     // Расчёт длительности пребывания при изменении времени прибытия/отправления
     const calculateStayDuration = () => {
@@ -64,6 +73,9 @@ class TravelPlannerApp {
         } else {
           stayDurationInput.value = `${minutes} м`;
         }
+
+        // Обновляем отображение в боковой панели
+        this.updateNewPointSidebar(arrivalInput.value, departureInput.value, stayDurationInput.value);
       }
     };
 
@@ -110,7 +122,7 @@ class TravelPlannerApp {
         const departureDateTime = new Date(`${departureDateInput.value}T${departureInput.value}`);
 
         let travelMinutes = Math.floor((departureDateTime - arrivalDateTime) / 60000);
-        if (travelMinutes < 0) travelMinutes += 24 * 60;
+        if (travelMinutes < 0) travelMinutes += 24 * 60 * 60;
 
         const hours = Math.floor(travelMinutes / 60);
         const minutes = travelMinutes % 60;
@@ -120,9 +132,9 @@ class TravelPlannerApp {
 
     // Проверка соответствия времени прибытия и длительности в пути
     const checkArrivalConsistency = () => {
-      if (!this.currentEditId && !this.insertAfterId) return;
+      if (!this.insertAfterId) return;
       
-      const prevRoute = this.insertAfterId ? this.routeController.getRouteById(this.insertAfterId) : null;
+      const prevRoute = this.routeController.getRouteById(this.insertAfterId);
       if (!prevRoute || !prevRoute.dates.endTime || !prevRoute.dates.endDate) return;
       if (!travelDurationInput.value || !arrivalInput.value || !arrivalDateInput.value) return;
 
@@ -136,6 +148,8 @@ class TravelPlannerApp {
       const diffMinutes = Math.abs((actualArrivalDateTime - expectedArrivalDateTime) / 60000);
       if (diffMinutes > 5) {
         this.showArrivalWarning(expectedArrivalDateTime);
+      } else {
+        this.hideArrivalWarning();
       }
     };
 
@@ -169,104 +183,50 @@ class TravelPlannerApp {
         calculateArrivalFromTravel();
       }
     });
+
+    nameInput.addEventListener('input', () => {
+      // Можно добавить валидацию в реальном времени
+    });
   }
 
   /**
-   * Показывает предупреждение о несоответствии времени прибытия
+   * Обновляет боковую панель новой карточки
    */
-  showArrivalWarning(expectedDateTime) {
-    const expectedDate = expectedDateTime.toISOString().split('T')[0];
-    const expectedTime = `${String(expectedDateTime.getHours()).padStart(2, '0')}:${String(expectedDateTime.getMinutes()).padStart(2, '0')}`;
-    
-    const warningHtml = `
-      <div class="arrival-warning">
-        <p>Время прибытия не соответствует длительности в пути до этого места</p>
-        <p class="expected-time">Ожидаемое: ${expectedDate} ${expectedTime}</p>
-        <div class="warning-buttons">
-          <button class="btn-accept" id="acceptWarning"><i class="fas fa-check"></i></button>
-          <button class="btn-cancel" id="cancelWarning"><i class="fas fa-times"></i></button>
-        </div>
-      </div>
-    `;
-    
-    let warningEl = document.getElementById('arrivalWarning');
-    if (!warningEl) {
-      warningEl = document.createElement('div');
-      warningEl.id = 'arrivalWarning';
-      warningEl.innerHTML = warningHtml;
-      const modalBody = document.querySelector('.modal-body');
-      modalBody.insertBefore(warningEl, document.getElementById('pointArrival').closest('.form-row-2').nextSibling);
-    } else {
-      warningEl.innerHTML = warningHtml;
-      warningEl.style.display = 'block';
-    }
+  updateNewPointSidebar(arrivalTime, departureTime, duration) {
+    const arrivalBadge = document.querySelector('.new-point-card .time-badge.arrival .time-value');
+    const departureBadge = document.querySelector('.new-point-card .time-badge.departure .time-value');
+    const durationBadge = document.querySelector('.new-point-card .time-badge.duration .duration-value');
 
-    // Обработчики кнопок
-    setTimeout(() => {
-      document.getElementById('acceptWarning')?.addEventListener('click', () => {
-        // Принять - установить ожидаемое время
-        document.getElementById('pointArrival').value = expectedTime;
-        document.getElementById('pointArrivalDate').value = expectedDate;
-        warningEl.style.display = 'none';
-      });
-      
-      document.getElementById('cancelWarning')?.addEventListener('click', () => {
-        // Отклонить - скрыть предупреждение
-        warningEl.style.display = 'none';
-      });
-    }, 0);
+    if (arrivalBadge) arrivalBadge.textContent = arrivalTime || '--:--';
+    if (departureBadge) departureBadge.textContent = departureTime || '--:--';
+    if (durationBadge) durationBadge.textContent = duration || '—';
   }
 
   /**
-   * Парсит строку длительности в формате "1ч 30м", "1:30", "90" (минуты)
-   * @param {string} durationStr - Строка длительности
-   * @returns {number} Длительность в минутах
+   * Показывает карточку для ввода новой точки
    */
-  parseDuration(durationStr) {
-    if (!durationStr) return 0;
-    
-    // Формат "1ч 30м" или "1ч30м"
-    const chMatch = durationStr.match(/(\d+)\s*ч/);
-    const mMatch = durationStr.match(/(\d+)\s*м/);
-    
-    if (chMatch || mMatch) {
-      const hours = chMatch ? parseInt(chMatch[1]) : 0;
-      const minutes = mMatch ? parseInt(mMatch[1]) : 0;
-      return hours * 60 + minutes;
-    }
-    
-    // Формат "1:30"
-    if (durationStr.includes(':')) {
-      const [h, m] = durationStr.split(':').map(Number);
-      return (h || 0) * 60 + (m || 0);
-    }
-    
-    // Просто число (минуты)
-    const num = parseInt(durationStr);
-    return isNaN(num) ? 0 : num;
-  }
-
-  openAddModal(insertAfterId = null) {
-    this.currentEditId = null;
+  showNewPointCard(insertAfterId = null) {
     this.insertAfterId = insertAfterId;
+    this.isEditing = false;
+    this.editId = null;
 
-    document.getElementById('pointModalTitle').textContent = 'Добавить точку';
-    document.getElementById('pointName').value = '';
-    document.getElementById('pointNotes').value = '';
-    
-    // Скрываем предупреждение если есть
-    const warningEl = document.getElementById('arrivalWarning');
-    if (warningEl) warningEl.style.display = 'none';
+    const wrapper = document.getElementById('newPointCardWrapper');
+    if (!wrapper) return;
+
+    // Очищаем поля
+    document.getElementById('newPointName').value = '';
+    document.getElementById('newPointNotes').value = '';
+    document.getElementById('newPointTravelDuration').value = '';
+    document.getElementById('newPointPinBtn').classList.remove('active');
+    this.hideArrivalWarning();
 
     // Если добавляем после другой точки, рассчитываем дату и время прибытия
     if (insertAfterId) {
       const prevRoute = this.routeController.getRouteById(insertAfterId);
       if (prevRoute) {
-        // По умолчанию длительность в пути 1 час
         const travelDuration = '1ч 0м';
-        document.getElementById('pointTravelDuration').value = travelDuration;
+        document.getElementById('newPointTravelDuration').value = travelDuration;
 
-        // Рассчитываем время прибытия = время отправления предыдущей + длительность в пути
         if (prevRoute.dates.endTime && prevRoute.dates.endDate) {
           const prevDepartureDateTime = new Date(`${prevRoute.dates.endDate}T${prevRoute.dates.endTime}`);
           const travelMinutes = this.parseDuration(travelDuration);
@@ -277,192 +237,85 @@ class TravelPlannerApp {
           const arrivalH = String(arrivalDateTime.getHours()).padStart(2, '0');
           const arrivalM = String(arrivalDateTime.getMinutes()).padStart(2, '0');
           
-          document.getElementById('pointArrivalDate').value = arrivalDate;
-          document.getElementById('pointArrival').value = `${arrivalH}:${arrivalM}`;
+          document.getElementById('newPointArrivalDate').value = arrivalDate;
+          document.getElementById('newPointArrival').value = `${arrivalH}:${arrivalM}`;
           
-          // Время отправления по умолчанию = прибытие + 1 час
           const departureDateTime = new Date(arrivalDateTime.getTime() + 60 * 60000);
           const departureDate = departureDateTime.toISOString().split('T')[0];
           const departureH = String(departureDateTime.getHours()).padStart(2, '0');
           const departureM = String(departureDateTime.getMinutes()).padStart(2, '0');
           
-          document.getElementById('pointDepartureDate').value = departureDate;
-          document.getElementById('pointDeparture').value = `${departureH}:${departureM}`;
-          document.getElementById('pointStayDuration').value = '1ч 0м';
-        } else {
-          document.getElementById('pointArrivalDate').value = '';
-          document.getElementById('pointArrival').value = '';
-          document.getElementById('pointDepartureDate').value = '';
-          document.getElementById('pointDeparture').value = '';
-          document.getElementById('pointStayDuration').value = '';
+          document.getElementById('newPointDepartureDate').value = departureDate;
+          document.getElementById('newPointDeparture').value = `${departureH}:${departureM}`;
+          document.getElementById('newPointStayDuration').value = '1ч 0м';
+          
+          this.updateNewPointSidebar(`${arrivalH}:${arrivalM}`, `${departureH}:${departureM}`, '1ч 0м');
         }
       }
     } else {
-      // Новая точка без привязки к предыдущей
       const now = new Date();
       const today = now.toISOString().split('T')[0];
       const currentH = String(now.getHours()).padStart(2, '0');
       const currentM = String(now.getMinutes()).padStart(2, '0');
       
-      document.getElementById('pointArrivalDate').value = today;
-      document.getElementById('pointArrival').value = `${currentH}:${currentM}`;
-      document.getElementById('pointDepartureDate').value = today;
-      document.getElementById('pointDeparture').value = '';
-      document.getElementById('pointStayDuration').value = '';
-      document.getElementById('pointTravelDuration').value = '';
+      document.getElementById('newPointArrivalDate').value = today;
+      document.getElementById('newPointArrival').value = `${currentH}:${currentM}`;
+      document.getElementById('newPointDepartureDate').value = today;
+      document.getElementById('newPointDeparture').value = '';
+      document.getElementById('newPointStayDuration').value = '';
+      document.getElementById('newPointTravelDuration').value = '';
+      
+      this.updateNewPointSidebar(`${currentH}:${currentM}`, '', '');
     }
 
-    const modal = document.getElementById('pointModal');
-    modal.style.display = 'block';
+    // Скрываем кнопку добавления и показываем карточку
+    document.getElementById('addPointBtn').style.display = 'none';
+    wrapper.style.display = 'flex';
+
+    // Фокус на поле названия
+    setTimeout(() => {
+      document.getElementById('newPointName').focus();
+    }, 100);
   }
 
-  openEditModal(routeId) {
-    this.currentEditId = routeId;
+  /**
+   * Скрывает карточку для ввода новой точки
+   */
+  hideNewPointCard() {
+    const wrapper = document.getElementById('newPointCardWrapper');
+    if (wrapper) {
+      wrapper.style.display = 'none';
+    }
+    document.getElementById('addPointBtn').style.display = 'inline-flex';
     this.insertAfterId = null;
-    const route = this.routeController.getRouteById(routeId);
-    
-    // Скрываем предупреждение если есть
-    const warningEl = document.getElementById('arrivalWarning');
-    if (warningEl) warningEl.style.display = 'none';
-
-    if (route) {
-      document.getElementById('pointModalTitle').textContent = 'Редактировать точку';
-      document.getElementById('pointName').value = route.destination.name || '';
-      document.getElementById('pointArrivalDate').value = route.dates.startDate || '';
-      document.getElementById('pointArrival').value = route.dates.startTime || '';
-      document.getElementById('pointDepartureDate').value = route.dates.endDate || route.dates.startDate || '';
-      document.getElementById('pointDeparture').value = route.dates.endTime || '';
-
-      // Рассчитываем длительность пребывания
-      if (route.dates.startTime && route.dates.endTime && route.dates.startDate && route.dates.endDate) {
-        const stayDuration = this.routeController.calculateStayDuration(
-          route.dates.startTime,
-          route.dates.endTime,
-          route.dates.startDate,
-          route.dates.endDate
-        );
-        document.getElementById('pointStayDuration').value =
-          `${stayDuration.hours}ч ${stayDuration.minutes}м`;
-      }
-
-      // Длительность в пути пока не заполняем (нет данных в модели)
-      document.getElementById('pointTravelDuration').value = '';
-
-      document.getElementById('pointNotes').value = route.notes || route.details || '';
-
-      const modal = document.getElementById('pointModal');
-      modal.style.display = 'block';
-    }
-  }
-
-  closeModal() {
-    const modal = document.getElementById('pointModal');
-    modal.style.display = 'none';
+    this.hideArrivalWarning();
   }
 
   /**
-   * Очищает все ошибки валидации
+   * Сохраняет новую точку
    */
-  clearErrors() {
-    const errorElements = document.querySelectorAll('.form-error');
-    errorElements.forEach(el => el.textContent = '');
+  saveNewPoint() {
+    const name = document.getElementById('newPointName').value.trim();
+    const arrivalDate = document.getElementById('newPointArrivalDate').value;
+    const arrival = document.getElementById('newPointArrival').value;
+    const departureDate = document.getElementById('newPointDepartureDate').value;
+    const departure = document.getElementById('newPointDeparture').value;
+    const notes = document.getElementById('newPointNotes').value;
+    const isPinned = document.getElementById('newPointPinBtn').classList.contains('active');
 
-    const inputs = document.querySelectorAll('.form-group input, .form-group textarea');
-    inputs.forEach(el => el.classList.remove('error'));
-  }
-
-  /**
-   * Показывает ошибку валидации
-   * @param {string} fieldId - ID поля
-   * @param {string} message - Сообщение об ошибке
-   */
-  showError(fieldId, message) {
-    const errorElement = document.getElementById(`error-${fieldId}`);
-    const inputElement = document.getElementById(fieldId === 'name' ? 'pointName' :
-                                                  fieldId === 'arrival-date' ? 'pointArrivalDate' :
-                                                  fieldId === 'arrival' ? 'pointArrival' :
-                                                  fieldId === 'departure-date' ? 'pointDepartureDate' :
-                                                  fieldId === 'departure' ? 'pointDeparture' :
-                                                  fieldId === 'travel' ? 'pointTravelDuration' : null);
-
-    if (errorElement) {
-      errorElement.textContent = message;
-    }
-    if (inputElement) {
-      inputElement.classList.add('error');
-    }
-  }
-
-  /**
-   * Валидирует данные формы
-   * @returns {boolean} true если валидация пройдена
-   */
-  validateForm() {
-    this.clearErrors();
-
-    const name = document.getElementById('pointName').value.trim();
-    const arrivalDate = document.getElementById('pointArrivalDate').value;
-    const arrival = document.getElementById('pointArrival').value;
-    const departureDate = document.getElementById('pointDepartureDate').value;
-    const departure = document.getElementById('pointDeparture').value;
-
-    let isValid = true;
-
-    // Проверка названия
+    // Валидация
     if (!name) {
-      this.showError('name', 'Введите название точки');
-      isValid = false;
-    }
-
-    // Проверка даты прибытия
-    if (!arrivalDate) {
-      this.showError('arrival-date', 'Выберите дату');
-      isValid = false;
-    }
-
-    // Проверка времени прибытия
-    if (!arrival) {
-      this.showError('arrival', 'Укажите время');
-      isValid = false;
-    }
-
-    // Проверка даты отправления
-    if (!departureDate) {
-      this.showError('departure-date', 'Выберите дату');
-      isValid = false;
-    }
-
-    // Проверка времени отправления
-    if (!departure) {
-      this.showError('departure', 'Укажите время');
-      isValid = false;
-    }
-
-    // Проверка: отправление должно быть позже прибытия
-    if (arrival && departure && arrivalDate && departureDate) {
-      const arrivalDateTime = new Date(`${arrivalDate}T${arrival}`);
-      const departureDateTime = new Date(`${departureDate}T${departure}`);
-
-      if (departureDateTime <= arrivalDateTime) {
-        this.showError('departure', 'Отправление должно быть позже прибытия');
-        isValid = false;
-      }
-    }
-
-    return isValid;
-  }
-
-  saveModal() {
-    if (!this.validateForm()) {
+      alert('Введите название точки');
       return;
     }
-
-    const name = document.getElementById('pointName').value;
-    const arrivalDate = document.getElementById('pointArrivalDate').value;
-    const arrival = document.getElementById('pointArrival').value;
-    const departureDate = document.getElementById('pointDepartureDate').value;
-    const departure = document.getElementById('pointDeparture').value;
-    const notes = document.getElementById('pointNotes').value;
+    if (!arrivalDate || !arrival) {
+      alert('Укажите дату и время прибытия');
+      return;
+    }
+    if (!departureDate || !departure) {
+      alert('Укажите дату и время отправления');
+      return;
+    }
 
     const routeData = {
       destination: {
@@ -478,22 +331,91 @@ class TravelPlannerApp {
       duration: { hours: 0, minutes: 0 },
       details: notes,
       notes: notes,
-      status: 'planned'
+      status: 'planned',
+      priority: isPinned ? 'high' : 'medium'
     };
 
-    if (this.currentEditId) {
-      // Редактирование
-      this.routeController.updateRoute(this.currentEditId, routeData);
-    } else {
-      // Добавление
-      const route = this.routeController.addRoute(routeData);
-      if (route) {
-        this.currentEditId = route.id;
+    this.routeController.addRoute(routeData);
+    this.hideNewPointCard();
+    this.renderInitialView();
+  }
+
+  /**
+   * Показывает предупреждение о несоответствии времени прибытия
+   */
+  showArrivalWarning(expectedDateTime) {
+    const expectedDate = expectedDateTime.toISOString().split('T')[0];
+    const expectedTime = `${String(expectedDateTime.getHours()).padStart(2, '0')}:${String(expectedDateTime.getMinutes()).padStart(2, '0')}`;
+    
+    let warningEl = document.getElementById('arrivalWarning');
+    if (!warningEl) {
+      warningEl = document.createElement('div');
+      warningEl.id = 'arrivalWarning';
+      warningEl.className = 'arrival-warning';
+      warningEl.innerHTML = `
+        <p>Время прибытия не соответствует длительности в пути</p>
+        <p class="expected-time">Ожидаемое: ${expectedDate} ${expectedTime}</p>
+        <div class="warning-buttons">
+          <button class="btn-accept" id="acceptWarning"><i class="fas fa-check"></i></button>
+          <button class="btn-cancel" id="cancelWarning"><i class="fas fa-times"></i></button>
+        </div>
+      `;
+      
+      const formContainer = document.querySelector('.new-point-form');
+      if (formContainer) {
+        formContainer.insertBefore(warningEl, formContainer.firstChild);
       }
+
+      // Обработчики кнопок
+      setTimeout(() => {
+        document.getElementById('acceptWarning')?.addEventListener('click', () => {
+          document.getElementById('newPointArrival').value = expectedTime;
+          document.getElementById('newPointArrivalDate').value = expectedDate;
+          this.hideArrivalWarning();
+        });
+        
+        document.getElementById('cancelWarning')?.addEventListener('click', () => {
+          this.hideArrivalWarning();
+        });
+      }, 0);
+    } else {
+      warningEl.querySelector('.expected-time').textContent = `Ожидаемое: ${expectedDate} ${expectedTime}`;
+      warningEl.style.display = 'flex';
+    }
+  }
+
+  /**
+   * Скрывает предупреждение
+   */
+  hideArrivalWarning() {
+    const warningEl = document.getElementById('arrivalWarning');
+    if (warningEl) {
+      warningEl.style.display = 'none';
+    }
+  }
+
+  /**
+   * Парсит строку длительности в формате "1ч 30м", "1:30", "90" (минуты)
+   */
+  parseDuration(durationStr) {
+    if (!durationStr) return 0;
+
+    const chMatch = durationStr.match(/(\d+)\s*ч/);
+    const mMatch = durationStr.match(/(\d+)\s*м/);
+
+    if (chMatch || mMatch) {
+      const hours = chMatch ? parseInt(chMatch[1]) : 0;
+      const minutes = mMatch ? parseInt(mMatch[1]) : 0;
+      return hours * 60 + minutes;
     }
 
-    this.closeModal();
-    this.renderInitialView();
+    if (durationStr.includes(':')) {
+      const [h, m] = durationStr.split(':').map(Number);
+      return (h || 0) * 60 + (m || 0);
+    }
+
+    const num = parseInt(durationStr);
+    return isNaN(num) ? 0 : num;
   }
 
   renderInitialView() {

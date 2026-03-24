@@ -32,69 +32,76 @@
             <span><i class="fas fa-route"></i> Общая длительность: — </span>
             <span><i class="fas fa-location-dot"></i> Всего точек: 0</span>
         </div>
-    </div>
 
-    <!-- Модальное окно для добавления/редактирования точки -->
-    <div id="pointModal" class="modal">
-        <div class="modal-content modal-compact">
-            <div class="modal-header">
-                <h3 id="pointModalTitle">Добавить точку</h3>
-                <span class="close">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="form-group compact">
-                    <label for="pointName">Название точки</label>
-                    <input type="text" id="pointName" placeholder="Москва, Аэропорт">
-                    <small class="form-hint">Введите название места или адрес</small>
-                    <div class="form-error" id="error-name"></div>
-                </div>
-                <div class="form-group compact">
-                    <label for="pointTravelDuration">Время в пути до этой точки</label>
-                    <input type="text" id="pointTravelDuration" placeholder="1ч 30м">
-                    <small class="form-hint">Формат: 1ч 30м или 90 мин</small>
-                    <div class="form-error" id="error-travel"></div>
-                </div>
-                <div class="form-row-2 compact">
-                    <div class="form-group">
-                        <label for="pointArrival">Прибытие</label>
-                        <input type="date" id="pointArrivalDate">
-                        <small class="form-hint">ДД.ММ.ГГГГ</small>
-                        <div class="form-error" id="error-arrival-date"></div>
+        <!-- Пустая карточка для ввода новой точки -->
+        <div class="new-point-card-wrapper" id="newPointCardWrapper" style="display: none;">
+            <div class="checkpoint-card new-point-card">
+                <div class="checkpoint-time-sidebar">
+                    <div class="time-badge arrival">
+                        <span class="time-value">--:--</span>
+                        <span class="time-label">Прибытие</span>
                     </div>
-                    <div class="form-group">
-                        <label for="pointArrival">Время</label>
-                        <input type="time" id="pointArrival">
-                        <small class="form-hint">ЧЧ:ММ (24ч)</small>
-                        <div class="form-error" id="error-arrival"></div>
+                    <div class="time-badge duration">
+                        <span class="duration-value">—</span>
+                    </div>
+                    <div class="time-badge departure">
+                        <span class="time-value">--:--</span>
+                        <span class="time-label">Отправление</span>
                     </div>
                 </div>
-                <div class="form-row-2 compact">
-                    <div class="form-group">
-                        <label for="pointDeparture">Отправление</label>
-                        <input type="date" id="pointDepartureDate">
-                        <small class="form-hint">ДД.ММ.ГГГГ</small>
-                        <div class="form-error" id="error-departure-date"></div>
+                <div class="card-header">
+                    <div class="card-actions-left">
+                        <button class="pin-btn" id="newPointPinBtn" title="Закрепить">
+                            <i class="fas fa-thumbtack"></i>
+                        </button>
+                        <button class="edit-btn" id="newPointEditBtn" title="Редактировать">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                    <div class="card-actions-right">
+                        <button class="delete-btn" id="newPointCancelBtn" title="Отменить">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="new-point-form">
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <input type="text" id="newPointName" placeholder="Название точки">
+                            <small class="form-hint">Название места или адрес</small>
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="newPointTravelDuration" placeholder="1ч 30м">
+                            <small class="form-hint">Время в пути</small>
+                        </div>
+                    </div>
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label>Прибытие</label>
+                            <div class="datetime-inputs">
+                                <input type="date" id="newPointArrivalDate">
+                                <input type="time" id="newPointArrival">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Отправление</label>
+                            <div class="datetime-inputs">
+                                <input type="date" id="newPointDepartureDate">
+                                <input type="time" id="newPointDeparture">
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label for="pointDeparture">Время</label>
-                        <input type="time" id="pointDeparture">
-                        <small class="form-hint">ЧЧ:ММ (24ч)</small>
-                        <div class="form-error" id="error-departure"></div>
+                        <label>Пребывание</label>
+                        <input type="text" id="newPointStayDuration" placeholder="—" readonly class="readonly-field">
+                    </div>
+                    <div class="form-group">
+                        <textarea id="newPointNotes" rows="2" placeholder="Заметки (необязательно)"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn-primary" id="newPointSaveBtn"><i class="fas fa-check"></i> Сохранить точку</button>
                     </div>
                 </div>
-                <div class="form-group compact">
-                    <label>Пребывание</label>
-                    <input type="text" id="pointStayDuration" placeholder="—" readonly class="readonly-field">
-                    <small class="form-hint">Рассчитывается автоматически</small>
-                </div>
-                <div class="form-group compact">
-                    <label for="pointNotes">Заметки</label>
-                    <textarea id="pointNotes" rows="2" placeholder="Дополнительная информация"></textarea>
-                    <small class="form-hint">Необязательное поле</small>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-primary" id="savePointModal">Сохранить</button>
             </div>
         </div>
     </div>

@@ -253,11 +253,7 @@ export class RouteController {
         </div>
       </div>
       <div class="card-header">
-        <input type="text" class="point-name-input" value="${route.destination.name || ''}"
-          placeholder="Название точки" data-route-id="${route.id}" data-field="name">
-        <input type="date" class="point-date-input" value="${route.dates.startDate || ''}"
-          data-route-id="${route.id}" data-field="startDate">
-        <div class="card-actions">
+        <div class="card-actions-left">
           <button class="pin-btn ${route.priority === 'high' ? 'active' : ''}"
             data-route-id="${route.id}" title="Закрепить">
             <i class="fas fa-thumbtack"></i>
@@ -265,6 +261,8 @@ export class RouteController {
           <button class="edit-btn" data-route-id="${route.id}" title="Редактировать">
             <i class="fas fa-edit"></i>
           </button>
+        </div>
+        <div class="card-actions-right">
           <button class="delete-btn" data-route-id="${route.id}" title="Удалить">
             <i class="fas fa-trash"></i>
           </button>
@@ -289,6 +287,11 @@ export class RouteController {
               data-route-id="${route.id}" data-field="endTime" style="flex: 1;">
           </div>
         </div>
+        <div class="time-row">
+          <label><i class="fas fa-tag"></i> Название:</label>
+          <input type="text" class="point-name-input-inline" value="${route.destination.name || ''}"
+            data-route-id="${route.id}" data-field="name" placeholder="Название точки">
+        </div>
       </div>
       <div class="notes-area">
         <textarea placeholder="Заметки..." data-route-id="${route.id}" data-field="notes">${route.notes || route.details || ''}</textarea>
@@ -306,9 +309,6 @@ export class RouteController {
         this.renderRoutes(app);
       }
     });
-
-    const editBtn = div.querySelector('.edit-btn');
-    editBtn.addEventListener('click', () => app.openEditModal(route.id));
 
     const pinBtn = div.querySelector('.pin-btn');
     pinBtn.addEventListener('click', () => {

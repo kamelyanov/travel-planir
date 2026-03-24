@@ -172,7 +172,7 @@ h1 small {
 
 .card-header {
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    padding: 14px 18px 14px 88px;
+    padding: 12px 18px 12px 88px;
     border-radius: 24px 24px 0 0;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
@@ -180,6 +180,16 @@ h1 small {
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+}
+
+.card-actions-left {
+    display: flex;
+    gap: 6px;
+}
+
+.card-actions-right {
+    display: flex;
+    gap: 6px;
 }
 
 .point-name-input {
@@ -307,6 +317,24 @@ h1 small {
     background: white;
 }
 
+.time-row .point-name-input-inline {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid #cbd5e6;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    background: #fefefe;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.time-row .point-name-input-inline:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
+    background: white;
+}
+
 /* Заметки */
 .notes-area {
     padding: 6px 18px 14px 88px;
@@ -356,6 +384,76 @@ h1 small {
     border-color: #cbd5e1;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* Карточка для ввода новой точки */
+.new-point-card-wrapper {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.new-point-card {
+    animation: cardFadeIn 0.3s ease;
+}
+
+@keyframes cardFadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.new-point-form {
+    padding: 16px 18px 16px 88px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.form-row-3 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 12px;
+}
+
+.datetime-inputs {
+    display: flex;
+    gap: 6px;
+}
+
+.datetime-inputs input[type="date"] {
+    flex: 1;
+    min-width: 0;
+}
+
+.datetime-inputs input[type="time"] {
+    flex: 1;
+    min-width: 0;
+}
+
+.new-point-form .form-group {
+    margin-bottom: 0;
+}
+
+.new-point-form .form-group label {
+    font-size: 0.75rem;
+    margin-bottom: 4px;
+}
+
+.new-point-form .form-group input,
+.new-point-form .form-group textarea {
+    padding: 7px 9px;
+    font-size: 0.8rem;
+}
+
+.form-actions {
+    margin-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.form-actions .btn-primary {
+    padding: 8px 18px;
+    font-size: 0.8rem;
 }
 
 /* Блок перехода */
@@ -490,127 +588,7 @@ h1 small {
     color: #3b82f6;
 }
 
-/* Модальные окна */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.6);
-    backdrop-filter: blur(6px);
-    animation: modalBackdropFadeIn 0.25s ease;
-}
-
-@keyframes modalBackdropFadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-.modal-content {
-    background-color: #fff;
-    margin: 10% auto;
-    width: 90%;
-    max-width: 420px;
-    border-radius: 20px;
-    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
-    animation: modalFadeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    border: 1px solid rgba(255,255,255,0.2);
-}
-
-/* Компактное модальное окно */
-.modal-content.modal-compact {
-    max-width: 380px;
-    border-radius: 18px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-}
-
-.modal-content.modal-compact .modal-header {
-    padding: 14px 16px;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    border-radius: 18px 18px 0 0;
-}
-
-.modal-content.modal-compact .modal-header h3 {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: #1e293b;
-}
-
-.modal-content.modal-compact .modal-body {
-    padding: 14px 16px;
-}
-
-.modal-content.modal-compact .modal-footer {
-    padding: 14px 16px;
-    background: #f8fafc;
-    border-radius: 0 0 18px 18px;
-}
-
-@keyframes modalFadeIn {
-    from { opacity: 0; transform: translateY(-15px) scale(0.97); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 18px;
-    border-bottom: 1px solid #e2e8f0;
-    background: linear-gradient(135deg, #fafcff 0%, #f1f5f9 100%);
-    border-radius: 20px 20px 0 0;
-}
-
-.modal-header h3 {
-    margin: 0;
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: #1e293b;
-}
-
-.modal-header .close {
-    font-size: 26px;
-    font-weight: 300;
-    cursor: pointer;
-    color: #64748b;
-    transition: all 0.2s;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-}
-
-.modal-header .close:hover {
-    color: #1e293b;
-    background: #e2e8f0;
-}
-
-.modal-body {
-    padding: 16px 18px;
-}
-
-.modal-footer {
-    padding: 12px 16px;
-    border-top: 1px solid #e2e8f0;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    border-radius: 0 0 20px 20px;
-}
-
-.modal-footer .btn-primary {
-    padding: 9px 20px;
-    font-size: 0.85rem;
-    border-radius: 28px;
-}
-
+/* Формы и поля ввода */
 .form-group {
     margin-bottom: 10px;
 }
