@@ -368,12 +368,13 @@ h1 small {
 }
 
 .time-row label {
-    width: 85px;
+    width: 140px;
     font-weight: 600;
     color: #475569;
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-shrink: 0;
 }
 
 .time-row i {

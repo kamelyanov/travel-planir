@@ -204,21 +204,15 @@ export class RouteController {
       return;
     }
 
-    // Сортируем маршруты по дате и времени
-    const sortedRoutes = [...this.routes].sort((a, b) => {
-      const dateA = new Date(`${a.dates.startDate}T${a.dates.startTime || '00:00'}`);
-      const dateB = new Date(`${b.dates.startDate}T${b.dates.startTime || '00:00'}`);
-      return dateA - dateB;
-    });
-
-    sortedRoutes.forEach((route, index) => {
+    // Отображаем маршруты в порядке добавления (без сортировки)
+    this.routes.forEach((route, index) => {
       // Добавляем карточку точки
       const cardElement = this.createCheckpointCard(route, app, index);
       timelineTrack.appendChild(cardElement);
 
       // Добавляем переход (кроме последней точки)
-      if (index < sortedRoutes.length - 1) {
-        const nextRoute = sortedRoutes[index + 1];
+      if (index < this.routes.length - 1) {
+        const nextRoute = this.routes[index + 1];
         const transitionElement = this.createTransitionBlock(route, nextRoute, app);
         timelineTrack.appendChild(transitionElement);
       }
@@ -315,6 +309,11 @@ export class RouteController {
         </div>
       </div>
       <div class="time-group">
+        <div class="time-row">
+          <label><i class="fas fa-map-marker-alt"></i> Название точки:</label>
+          <input type="text" class="point-name-input-inline" value="${route.destination.name || ''}"
+            data-route-id="${route.id}" data-field="name" placeholder="Название места или адрес">
+        </div>
         ${arrivalSection}
         ${!isFirstCard ? `
         <div class="time-row">
@@ -323,11 +322,6 @@ export class RouteController {
             data-route-id="${route.id}" data-field="travelDuration" placeholder="1ч 30м">
         </div>
         ` : ''}
-        <div class="time-row">
-          <label><i class="fas fa-map-marker-alt"></i> Название точки:</label>
-          <input type="text" class="point-name-input-inline" value="${route.destination.name || ''}"
-            data-route-id="${route.id}" data-field="name" placeholder="Название места или адрес">
-        </div>
         <div class="time-row">
           <label><i class="fas fa-hourglass-half"></i> Длительность пребывания:</label>
           <input type="text" value="${durationDisplay}" readonly class="readonly-field" style="flex: 1;">
@@ -416,15 +410,11 @@ export class RouteController {
                 minutes: travelMinutes % 60
               };
 
-              const sortedRoutes = [...this.routes].sort((a, b) => {
-                const dateA = new Date(`${a.dates.startDate}T${a.dates.startTime || '00:00'}`);
-                const dateB = new Date(`${b.dates.startDate}T${b.dates.startTime || '00:00'}`);
-                return dateA - dateB;
-              });
-              const currentIndex = sortedRoutes.findIndex(r => r.id === route.id);
-              
+              // Находим индекс текущей точки в массиве (без сортировки)
+              const currentIndex = this.routes.findIndex(r => r.id === route.id);
+
               if (currentIndex > 0) {
-                const prevRoute = sortedRoutes[currentIndex - 1];
+                const prevRoute = this.routes[currentIndex - 1];
                 
                 // Если время прибытия текущей точки закреплённое, пересчитываем время отправления предыдущей
                 if (currentRoute.isFixedTime && currentRoute.dates.startTime && currentRoute.dates.startDate) {
@@ -491,15 +481,11 @@ export class RouteController {
    * @param {Object} app - Ссылка на приложение для предупреждений
    */
   updateNextPointArrival(routeId, currentDate, departureTime, app) {
-    const sortedRoutes = [...this.routes].sort((a, b) => {
-      const dateA = new Date(`${a.dates.startDate}T${a.dates.startTime || '00:00'}`);
-      const dateB = new Date(`${b.dates.startDate}T${b.dates.startTime || '00:00'}`);
-      return dateA - dateB;
-    });
-
-    const currentIndex = sortedRoutes.findIndex(r => r.id === routeId);
-    if (currentIndex >= 0 && currentIndex < sortedRoutes.length - 1) {
-      const nextRoute = sortedRoutes[currentIndex + 1];
+    // Находим индекс текущей точки в массиве (без сортировки)
+    const currentIndex = this.routes.findIndex(r => r.id === routeId);
+    
+    if (currentIndex >= 0 && currentIndex < this.routes.length - 1) {
+      const nextRoute = this.routes[currentIndex + 1];
 
       // Если время прибытия следующей точки закреплённое, не пересчитываем его
       if (nextRoute.isFixedTime) {
