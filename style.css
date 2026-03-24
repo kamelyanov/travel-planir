@@ -76,13 +76,14 @@ h1 small {
     border-radius: 24px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
     width: 100%;
-    max-width: 500px;
+    max-width: 550px;
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     border: 1px solid #e2e8f0;
     display: grid;
     grid-template-rows: auto 1fr auto;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
+    margin: 0 auto;
 }
 
 .checkpoint-card:hover {
@@ -101,13 +102,13 @@ h1 small {
     left: 0;
     top: 0;
     bottom: 0;
-    width: 76px;
+    width: 80px;
     background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
     border-right: 1px solid #dbeafe;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 14px 10px;
+    padding: 14px 8px;
     z-index: 1;
 }
 
@@ -172,7 +173,7 @@ h1 small {
 
 .card-header {
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    padding: 12px 18px 12px 88px;
+    padding: 12px 14px 12px 92px;
     border-radius: 24px 24px 0 0;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
@@ -265,7 +266,7 @@ h1 small {
 
 /* Группа времени */
 .time-group {
-    padding: 14px 18px 14px 88px;
+    padding: 14px 14px 14px 92px;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -337,7 +338,7 @@ h1 small {
 
 /* Заметки */
 .notes-area {
-    padding: 6px 18px 14px 88px;
+    padding: 6px 14px 14px 92px;
 }
 
 .notes-area textarea {
@@ -362,7 +363,7 @@ h1 small {
 
 /* Кнопка добавления после */
 .add-after-btn {
-    margin: 8px 18px 16px 88px;
+    margin: 8px 14px 16px 92px;
     background: linear-gradient(135deg, #eff3f8 0%, #e2e8f0 100%);
     border: 1px solid #e2e8f0;
     border-radius: 40px;
@@ -403,7 +404,7 @@ h1 small {
 }
 
 .new-point-form {
-    padding: 16px 18px 16px 88px;
+    padding: 16px 14px 16px 92px;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -784,7 +785,18 @@ h1 small {
         font-size: 0.45rem;
     }
     
-    .card-header, .time-group, .notes-area, .add-after-btn {
-        padding-left: 70px;
+    .card-header, .time-group, .notes-area, .add-after-btn, .new-point-form {
+        padding-left: 68px;
+    }
+    
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .card-actions-left, .card-actions-right {
+        display: flex;
+        gap: 4px;
     }
 }

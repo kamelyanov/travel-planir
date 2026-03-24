@@ -319,7 +319,7 @@ export class RouteController {
 
     const addAfterBtn = div.querySelector('.add-after-btn');
     addAfterBtn.addEventListener('click', () => {
-      app.openAddModal(route.id);
+      app.showNewPointCard(route.id);
     });
 
     // Inline-редактирование
