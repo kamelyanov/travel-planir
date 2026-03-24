@@ -25,15 +25,10 @@ class TravelPlannerApp {
     // Модальное окно
     const modal = document.getElementById('pointModal');
     const closeBtn = modal.querySelector('.close');
-    const cancelBtn = document.getElementById('cancelPointModal');
     const saveBtn = document.getElementById('savePointModal');
 
     if (closeBtn) {
       closeBtn.addEventListener('click', () => this.closeModal());
-    }
-
-    if (cancelBtn) {
-      cancelBtn.addEventListener('click', () => this.closeModal());
     }
 
     if (saveBtn) {
@@ -42,69 +37,105 @@ class TravelPlannerApp {
 
     // Поля для расчёта времени
     const arrivalInput = document.getElementById('pointArrival');
+    const arrivalDateInput = document.getElementById('pointArrivalDate');
     const departureInput = document.getElementById('pointDeparture');
+    const departureDateInput = document.getElementById('pointDepartureDate');
     const stayDurationInput = document.getElementById('pointStayDuration');
     const travelDurationInput = document.getElementById('pointTravelDuration');
 
     // Расчёт длительности пребывания при изменении времени прибытия/отправления
     const calculateStayDuration = () => {
-      if (arrivalInput.value && departureInput.value) {
-        const [arrivalH, arrivalM] = arrivalInput.value.split(':').map(Number);
-        const [departureH, departureM] = departureInput.value.split(':').map(Number);
+      if (arrivalInput.value && departureInput.value && arrivalDateInput.value && departureDateInput.value) {
+        const arrivalDateTime = new Date(`${arrivalDateInput.value}T${arrivalInput.value}`);
+        const departureDateTime = new Date(`${departureDateInput.value}T${departureInput.value}`);
         
-        let totalMinutes = (departureH * 60 + departureM) - (arrivalH * 60 + arrivalM);
-        if (totalMinutes < 0) totalMinutes += 24 * 60;
+        let totalMinutes = Math.floor((departureDateTime - arrivalDateTime) / 60000);
+        if (totalMinutes < 0) totalMinutes += 24 * 60 * 60;
+
+        const days = Math.floor(totalMinutes / (24 * 60));
+        const remainingMinutesAfterDays = totalMinutes % (24 * 60);
+        const hours = Math.floor(remainingMinutesAfterDays / 60);
+        const minutes = remainingMinutesAfterDays % 60;
         
-        const hours = Math.floor(totalMinutes / 60);
-        const minutes = totalMinutes % 60;
-        stayDurationInput.value = `${hours}ч ${minutes}м`;
+        if (days > 0) {
+          stayDurationInput.value = `${days} д ${hours} ч ${minutes} м`;
+        } else if (hours > 0) {
+          stayDurationInput.value = `${hours}ч ${minutes}м`;
+        } else {
+          stayDurationInput.value = `${minutes} м`;
+        }
       }
     };
 
-    // Расчёт времени отправления при изменении длительности в пути
+    // Расчёт времени и даты отправления при изменении длительности в пути
     const calculateDepartureFromTravel = () => {
-      if (arrivalInput.value && travelDurationInput.value) {
-        const [arrivalH, arrivalM] = arrivalInput.value.split(':').map(Number);
+      if (arrivalInput.value && arrivalDateInput.value && travelDurationInput.value) {
+        const arrivalDateTime = new Date(`${arrivalDateInput.value}T${arrivalInput.value}`);
         const travelMinutes = this.parseDuration(travelDurationInput.value);
+
+        const departureDateTime = new Date(arrivalDateTime.getTime() + travelMinutes * 60000);
         
-        const totalMinutes = arrivalH * 60 + arrivalM + travelMinutes;
-        const departureH = Math.floor(totalMinutes / 60) % 24;
-        const departureM = totalMinutes % 60;
-        
-        departureInput.value = `${String(departureH).padStart(2, '0')}:${String(departureM).padStart(2, '0')}`;
+        const departureH = String(departureDateTime.getHours()).padStart(2, '0');
+        const departureM = String(departureDateTime.getMinutes()).padStart(2, '0');
+        const departureDate = departureDateTime.toISOString().split('T')[0];
+
+        departureInput.value = `${departureH}:${departureM}`;
+        departureDateInput.value = departureDate;
         calculateStayDuration();
       }
     };
 
-    // Расчёт времени прибытия при изменении длительности в пути и времени отправления
+    // Расчёт времени и даты прибытия при изменении длительности в пути
     const calculateArrivalFromTravel = () => {
-      if (departureInput.value && travelDurationInput.value) {
-        const [departureH, departureM] = departureInput.value.split(':').map(Number);
+      if (departureInput.value && departureDateInput.value && travelDurationInput.value) {
+        const departureDateTime = new Date(`${departureDateInput.value}T${departureInput.value}`);
         const travelMinutes = this.parseDuration(travelDurationInput.value);
+
+        const arrivalDateTime = new Date(departureDateTime.getTime() - travelMinutes * 60000);
         
-        let totalMinutes = departureH * 60 + departureM - travelMinutes;
-        if (totalMinutes < 0) totalMinutes += 24 * 60;
-        
-        const arrivalH = Math.floor(totalMinutes / 60) % 24;
-        const arrivalM = totalMinutes % 60;
-        
-        arrivalInput.value = `${String(arrivalH).padStart(2, '0')}:${String(arrivalM).padStart(2, '0')}`;
+        const arrivalH = String(arrivalDateTime.getHours()).padStart(2, '0');
+        const arrivalM = String(arrivalDateTime.getMinutes()).padStart(2, '0');
+        const arrivalDate = arrivalDateTime.toISOString().split('T')[0];
+
+        arrivalInput.value = `${arrivalH}:${arrivalM}`;
+        arrivalDateInput.value = arrivalDate;
         calculateStayDuration();
       }
     };
 
     // Расчёт длительности в пути при изменении времени прибытия/отправления
     const calculateTravelFromTimes = () => {
-      if (arrivalInput.value && departureInput.value) {
-        const [arrivalH, arrivalM] = arrivalInput.value.split(':').map(Number);
-        const [departureH, departureM] = departureInput.value.split(':').map(Number);
-        
-        let travelMinutes = (departureH * 60 + departureM) - (arrivalH * 60 + arrivalM);
+      if (arrivalInput.value && departureInput.value && arrivalDateInput.value && departureDateInput.value) {
+        const arrivalDateTime = new Date(`${arrivalDateInput.value}T${arrivalInput.value}`);
+        const departureDateTime = new Date(`${departureDateInput.value}T${departureInput.value}`);
+
+        let travelMinutes = Math.floor((departureDateTime - arrivalDateTime) / 60000);
         if (travelMinutes < 0) travelMinutes += 24 * 60;
-        
+
         const hours = Math.floor(travelMinutes / 60);
         const minutes = travelMinutes % 60;
         travelDurationInput.value = `${hours}ч ${minutes}м`;
+      }
+    };
+
+    // Проверка соответствия времени прибытия и длительности в пути
+    const checkArrivalConsistency = () => {
+      if (!this.currentEditId && !this.insertAfterId) return;
+      
+      const prevRoute = this.insertAfterId ? this.routeController.getRouteById(this.insertAfterId) : null;
+      if (!prevRoute || !prevRoute.dates.endTime || !prevRoute.dates.endDate) return;
+      if (!travelDurationInput.value || !arrivalInput.value || !arrivalDateInput.value) return;
+
+      const prevDepartureDateTime = new Date(`${prevRoute.dates.endDate}T${prevRoute.dates.endTime}`);
+      const travelMinutes = this.parseDuration(travelDurationInput.value);
+      const expectedArrivalDateTime = new Date(prevDepartureDateTime.getTime() + travelMinutes * 60000);
+      
+      const actualArrivalDateTime = new Date(`${arrivalDateInput.value}T${arrivalInput.value}`);
+      
+      // Разница более 5 минут считаем несоответствием
+      const diffMinutes = Math.abs((actualArrivalDateTime - expectedArrivalDateTime) / 60000);
+      if (diffMinutes > 5) {
+        this.showArrivalWarning(expectedArrivalDateTime);
       }
     };
 
@@ -112,20 +143,78 @@ class TravelPlannerApp {
     arrivalInput.addEventListener('change', () => {
       calculateStayDuration();
       calculateTravelFromTimes();
+      checkArrivalConsistency();
     });
-    
+
+    arrivalDateInput.addEventListener('change', () => {
+      calculateStayDuration();
+      calculateTravelFromTimes();
+      checkArrivalConsistency();
+    });
+
     departureInput.addEventListener('change', () => {
       calculateStayDuration();
       calculateTravelFromTimes();
     });
-    
+
+    departureDateInput.addEventListener('change', () => {
+      calculateStayDuration();
+      calculateTravelFromTimes();
+    });
+
     travelDurationInput.addEventListener('change', () => {
-      if (arrivalInput.value) {
+      if (arrivalInput.value && arrivalDateInput.value) {
         calculateDepartureFromTravel();
-      } else if (departureInput.value) {
+      } else if (departureInput.value && departureDateInput.value) {
         calculateArrivalFromTravel();
       }
     });
+  }
+
+  /**
+   * Показывает предупреждение о несоответствии времени прибытия
+   */
+  showArrivalWarning(expectedDateTime) {
+    const expectedDate = expectedDateTime.toISOString().split('T')[0];
+    const expectedTime = `${String(expectedDateTime.getHours()).padStart(2, '0')}:${String(expectedDateTime.getMinutes()).padStart(2, '0')}`;
+    
+    const warningHtml = `
+      <div class="arrival-warning">
+        <p>Время прибытия не соответствует длительности в пути до этого места</p>
+        <p class="expected-time">Ожидаемое: ${expectedDate} ${expectedTime}</p>
+        <div class="warning-buttons">
+          <button class="btn-accept" id="acceptWarning"><i class="fas fa-check"></i></button>
+          <button class="btn-cancel" id="cancelWarning"><i class="fas fa-times"></i></button>
+        </div>
+      </div>
+    `;
+    
+    let warningEl = document.getElementById('arrivalWarning');
+    if (!warningEl) {
+      warningEl = document.createElement('div');
+      warningEl.id = 'arrivalWarning';
+      warningEl.innerHTML = warningHtml;
+      const modalBody = document.querySelector('.modal-body');
+      modalBody.insertBefore(warningEl, document.getElementById('pointArrival').closest('.form-row-2').nextSibling);
+    } else {
+      warningEl.innerHTML = warningHtml;
+      warningEl.style.display = 'block';
+    }
+
+    // Обработчики кнопок
+    setTimeout(() => {
+      document.getElementById('acceptWarning')?.addEventListener('click', () => {
+        // Принять - установить ожидаемое время
+        document.getElementById('pointArrival').value = expectedTime;
+        document.getElementById('pointArrivalDate').value = expectedDate;
+        warningEl.style.display = 'none';
+      });
+      
+      document.getElementById('cancelWarning')?.addEventListener('click', () => {
+        // Отклонить - скрыть предупреждение
+        warningEl.style.display = 'none';
+      });
+    }, 0);
   }
 
   /**
@@ -160,44 +249,64 @@ class TravelPlannerApp {
   openAddModal(insertAfterId = null) {
     this.currentEditId = null;
     this.insertAfterId = insertAfterId;
-    
+
     document.getElementById('pointModalTitle').textContent = 'Добавить точку';
     document.getElementById('pointName').value = '';
     document.getElementById('pointNotes').value = '';
     
+    // Скрываем предупреждение если есть
+    const warningEl = document.getElementById('arrivalWarning');
+    if (warningEl) warningEl.style.display = 'none';
+
     // Если добавляем после другой точки, рассчитываем дату и время прибытия
     if (insertAfterId) {
       const prevRoute = this.routeController.getRouteById(insertAfterId);
       if (prevRoute) {
-        // Копируем дату отправления предыдущей точки как дату прибытия новой
-        document.getElementById('pointDate').value = prevRoute.dates.startDate || '';
-        
         // По умолчанию длительность в пути 1 час
         const travelDuration = '1ч 0м';
         document.getElementById('pointTravelDuration').value = travelDuration;
-        
+
         // Рассчитываем время прибытия = время отправления предыдущей + длительность в пути
-        if (prevRoute.dates.endTime) {
-          const [depH, depM] = prevRoute.dates.endTime.split(':').map(Number);
+        if (prevRoute.dates.endTime && prevRoute.dates.endDate) {
+          const prevDepartureDateTime = new Date(`${prevRoute.dates.endDate}T${prevRoute.dates.endTime}`);
           const travelMinutes = this.parseDuration(travelDuration);
           
-          let totalMinutes = depH * 60 + depM + travelMinutes;
-          const arrivalH = Math.floor(totalMinutes / 60) % 24;
-          const arrivalM = totalMinutes % 60;
+          const arrivalDateTime = new Date(prevDepartureDateTime.getTime() + travelMinutes * 60000);
           
-          const arrivalTime = `${String(arrivalH).padStart(2, '0')}:${String(arrivalM).padStart(2, '0')}`;
-          document.getElementById('pointArrival').value = arrivalTime;
-          document.getElementById('pointDeparture').value = '';
-          document.getElementById('pointStayDuration').value = '';
+          const arrivalDate = arrivalDateTime.toISOString().split('T')[0];
+          const arrivalH = String(arrivalDateTime.getHours()).padStart(2, '0');
+          const arrivalM = String(arrivalDateTime.getMinutes()).padStart(2, '0');
+          
+          document.getElementById('pointArrivalDate').value = arrivalDate;
+          document.getElementById('pointArrival').value = `${arrivalH}:${arrivalM}`;
+          
+          // Время отправления по умолчанию = прибытие + 1 час
+          const departureDateTime = new Date(arrivalDateTime.getTime() + 60 * 60000);
+          const departureDate = departureDateTime.toISOString().split('T')[0];
+          const departureH = String(departureDateTime.getHours()).padStart(2, '0');
+          const departureM = String(departureDateTime.getMinutes()).padStart(2, '0');
+          
+          document.getElementById('pointDepartureDate').value = departureDate;
+          document.getElementById('pointDeparture').value = `${departureH}:${departureM}`;
+          document.getElementById('pointStayDuration').value = '1ч 0м';
         } else {
+          document.getElementById('pointArrivalDate').value = '';
           document.getElementById('pointArrival').value = '';
+          document.getElementById('pointDepartureDate').value = '';
           document.getElementById('pointDeparture').value = '';
           document.getElementById('pointStayDuration').value = '';
         }
       }
     } else {
-      document.getElementById('pointDate').value = '';
-      document.getElementById('pointArrival').value = '';
+      // Новая точка без привязки к предыдущей
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      const currentH = String(now.getHours()).padStart(2, '0');
+      const currentM = String(now.getMinutes()).padStart(2, '0');
+      
+      document.getElementById('pointArrivalDate').value = today;
+      document.getElementById('pointArrival').value = `${currentH}:${currentM}`;
+      document.getElementById('pointDepartureDate').value = today;
       document.getElementById('pointDeparture').value = '';
       document.getElementById('pointStayDuration').value = '';
       document.getElementById('pointTravelDuration').value = '';
@@ -209,25 +318,33 @@ class TravelPlannerApp {
 
   openEditModal(routeId) {
     this.currentEditId = routeId;
+    this.insertAfterId = null;
     const route = this.routeController.getRouteById(routeId);
+    
+    // Скрываем предупреждение если есть
+    const warningEl = document.getElementById('arrivalWarning');
+    if (warningEl) warningEl.style.display = 'none';
 
     if (route) {
       document.getElementById('pointModalTitle').textContent = 'Редактировать точку';
       document.getElementById('pointName').value = route.destination.name || '';
-      document.getElementById('pointDate').value = route.dates.startDate || '';
+      document.getElementById('pointArrivalDate').value = route.dates.startDate || '';
       document.getElementById('pointArrival').value = route.dates.startTime || '';
+      document.getElementById('pointDepartureDate').value = route.dates.endDate || route.dates.startDate || '';
       document.getElementById('pointDeparture').value = route.dates.endTime || '';
 
       // Рассчитываем длительность пребывания
-      if (route.dates.startTime && route.dates.endTime) {
+      if (route.dates.startTime && route.dates.endTime && route.dates.startDate && route.dates.endDate) {
         const stayDuration = this.routeController.calculateStayDuration(
           route.dates.startTime,
-          route.dates.endTime
+          route.dates.endTime,
+          route.dates.startDate,
+          route.dates.endDate
         );
         document.getElementById('pointStayDuration').value =
           `${stayDuration.hours}ч ${stayDuration.minutes}м`;
       }
-      
+
       // Длительность в пути пока не заполняем (нет данных в модели)
       document.getElementById('pointTravelDuration').value = '';
 
@@ -249,7 +366,7 @@ class TravelPlannerApp {
   clearErrors() {
     const errorElements = document.querySelectorAll('.form-error');
     errorElements.forEach(el => el.textContent = '');
-    
+
     const inputs = document.querySelectorAll('.form-group input, .form-group textarea');
     inputs.forEach(el => el.classList.remove('error'));
   }
@@ -261,12 +378,13 @@ class TravelPlannerApp {
    */
   showError(fieldId, message) {
     const errorElement = document.getElementById(`error-${fieldId}`);
-    const inputElement = document.getElementById(fieldId === 'name' ? 'pointName' : 
-                                                  fieldId === 'date' ? 'pointDate' :
+    const inputElement = document.getElementById(fieldId === 'name' ? 'pointName' :
+                                                  fieldId === 'arrival-date' ? 'pointArrivalDate' :
                                                   fieldId === 'arrival' ? 'pointArrival' :
+                                                  fieldId === 'departure-date' ? 'pointDepartureDate' :
                                                   fieldId === 'departure' ? 'pointDeparture' :
                                                   fieldId === 'travel' ? 'pointTravelDuration' : null);
-    
+
     if (errorElement) {
       errorElement.textContent = message;
     }
@@ -281,52 +399,56 @@ class TravelPlannerApp {
    */
   validateForm() {
     this.clearErrors();
-    
+
     const name = document.getElementById('pointName').value.trim();
-    const date = document.getElementById('pointDate').value;
+    const arrivalDate = document.getElementById('pointArrivalDate').value;
     const arrival = document.getElementById('pointArrival').value;
+    const departureDate = document.getElementById('pointDepartureDate').value;
     const departure = document.getElementById('pointDeparture').value;
-    
+
     let isValid = true;
-    
+
     // Проверка названия
     if (!name) {
       this.showError('name', 'Введите название точки');
       isValid = false;
     }
-    
-    // Проверка даты
-    if (!date) {
-      this.showError('date', 'Выберите дату');
+
+    // Проверка даты прибытия
+    if (!arrivalDate) {
+      this.showError('arrival-date', 'Выберите дату');
       isValid = false;
     }
-    
+
     // Проверка времени прибытия
     if (!arrival) {
-      this.showError('arrival', 'Укажите время прибытия');
+      this.showError('arrival', 'Укажите время');
       isValid = false;
     }
-    
+
+    // Проверка даты отправления
+    if (!departureDate) {
+      this.showError('departure-date', 'Выберите дату');
+      isValid = false;
+    }
+
     // Проверка времени отправления
     if (!departure) {
-      this.showError('departure', 'Укажите время отправления');
+      this.showError('departure', 'Укажите время');
       isValid = false;
     }
-    
-    // Проверка: время отправления должно быть позже времени прибытия
-    if (arrival && departure) {
-      const [arrivalH, arrivalM] = arrival.split(':').map(Number);
-      const [departureH, departureM] = departure.split(':').map(Number);
-      
-      const arrivalMinutes = arrivalH * 60 + arrivalM;
-      const departureMinutes = departureH * 60 + departureM;
-      
-      if (departureMinutes < arrivalMinutes) {
-        this.showError('departure', 'Время отправления должно быть позже времени прибытия');
+
+    // Проверка: отправление должно быть позже прибытия
+    if (arrival && departure && arrivalDate && departureDate) {
+      const arrivalDateTime = new Date(`${arrivalDate}T${arrival}`);
+      const departureDateTime = new Date(`${departureDate}T${departure}`);
+
+      if (departureDateTime <= arrivalDateTime) {
+        this.showError('departure', 'Отправление должно быть позже прибытия');
         isValid = false;
       }
     }
-    
+
     return isValid;
   }
 
@@ -334,10 +456,11 @@ class TravelPlannerApp {
     if (!this.validateForm()) {
       return;
     }
-    
+
     const name = document.getElementById('pointName').value;
-    const date = document.getElementById('pointDate').value;
+    const arrivalDate = document.getElementById('pointArrivalDate').value;
     const arrival = document.getElementById('pointArrival').value;
+    const departureDate = document.getElementById('pointDepartureDate').value;
     const departure = document.getElementById('pointDeparture').value;
     const notes = document.getElementById('pointNotes').value;
 
@@ -347,7 +470,8 @@ class TravelPlannerApp {
         address: name
       },
       dates: {
-        startDate: date,
+        startDate: arrivalDate,
+        endDate: departureDate,
         startTime: arrival,
         endTime: departure
       },

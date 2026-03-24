@@ -112,18 +112,43 @@ export class RouteController {
    * Вычисляет продолжительность пребывания
    * @param {string} arrivalTime - Время прибытия в формате HH:MM
    * @param {string} departureTime - Время отправления в формате HH:MM
-   * @returns {Object} Объект с часами и минутами
+   * @param {string} arrivalDate - Дата прибытия в формате YYYY-MM-DD
+   * @param {string} departureDate - Дата отправления в формате YYYY-MM-DD
+   * @returns {Object} Объект с днями, часами и минутами
    */
-  calculateStayDuration(arrivalTime, departureTime) {
-    const [arrivalH, arrivalM] = arrivalTime.split(':').map(Number);
-    const [departureH, departureM] = departureTime.split(':').map(Number);
+  calculateStayDuration(arrivalTime, departureTime, arrivalDate, departureDate) {
+    if (!arrivalDate || !departureDate) {
+      // Старая логика без дат
+      const [arrivalH, arrivalM] = arrivalTime.split(':').map(Number);
+      const [departureH, departureM] = departureTime.split(':').map(Number);
 
-    let totalMinutes = (departureH * 60 + departureM) - (arrivalH * 60 + arrivalM);
-    if (totalMinutes < 0) totalMinutes += 24 * 60;
+      let totalMinutes = (departureH * 60 + departureM) - (arrivalH * 60 + arrivalM);
+      if (totalMinutes < 0) totalMinutes += 24 * 60;
+
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return {
+        days: 0,
+        hours: hours,
+        minutes: minutes
+      };
+    }
+    
+    const arrivalDateTime = new Date(`${arrivalDate}T${arrivalTime}`);
+    const departureDateTime = new Date(`${departureDate}T${departureTime}`);
+    
+    let totalMinutes = Math.floor((departureDateTime - arrivalDateTime) / 60000);
+    if (totalMinutes < 0) totalMinutes += 24 * 60 * 60; // Добавляем сутки если отрицательное
+
+    const days = Math.floor(totalMinutes / (24 * 60));
+    const remainingMinutesAfterDays = totalMinutes % (24 * 60);
+    const hours = Math.floor(remainingMinutesAfterDays / 60);
+    const minutes = remainingMinutesAfterDays % 60;
 
     return {
-      hours: Math.floor(totalMinutes / 60),
-      minutes: totalMinutes % 60
+      days: days,
+      hours: hours,
+      minutes: minutes
     };
   }
 
@@ -188,24 +213,52 @@ export class RouteController {
     }
 
     const formattedDate = route.dates.startDate ?
-      new Date(route.dates.startDate).toLocaleDateString('ru-RU', { 
-        day: 'numeric', month: 'long' 
+      new Date(route.dates.startDate).toLocaleDateString('ru-RU', {
+        day: 'numeric', month: 'long'
       }) :
       'Дата не указана';
 
     const stayDuration = this.calculateStayDuration(
       route.dates.startTime || '00:00',
-      route.dates.endTime || '00:00'
+      route.dates.endTime || '00:00',
+      route.dates.startDate,
+      route.dates.endDate
     );
 
+    const arrivalTimeDisplay = route.dates.startTime || '--:--';
+    const departureTimeDisplay = route.dates.endTime || '--:--';
+    
+    // Формируем строку длительности с учётом дней
+    let durationDisplay = '';
+    if (stayDuration.days > 0) {
+      durationDisplay = `${stayDuration.days} д ${stayDuration.hours} ч ${stayDuration.minutes} м`;
+    } else if (stayDuration.hours > 0) {
+      durationDisplay = `${stayDuration.hours} ч ${stayDuration.minutes} м`;
+    } else {
+      durationDisplay = `${stayDuration.minutes} м`;
+    }
+
     div.innerHTML = `
+      <div class="checkpoint-time-sidebar">
+        <div class="time-badge arrival">
+          <span class="time-value">${arrivalTimeDisplay}</span>
+          <span class="time-label">Прибытие</span>
+        </div>
+        <div class="time-badge duration">
+          <span class="duration-value">${durationDisplay}</span>
+        </div>
+        <div class="time-badge departure">
+          <span class="time-value">${departureTimeDisplay}</span>
+          <span class="time-label">Отправление</span>
+        </div>
+      </div>
       <div class="card-header">
-        <input type="text" class="point-name-input" value="${route.destination.name || ''}" 
+        <input type="text" class="point-name-input" value="${route.destination.name || ''}"
           placeholder="Название точки" data-route-id="${route.id}" data-field="name">
-        <input type="date" class="point-date-input" value="${route.dates.startDate || ''}" 
+        <input type="date" class="point-date-input" value="${route.dates.startDate || ''}"
           data-route-id="${route.id}" data-field="startDate">
         <div class="card-actions">
-          <button class="pin-btn ${route.priority === 'high' ? 'active' : ''}" 
+          <button class="pin-btn ${route.priority === 'high' ? 'active' : ''}"
             data-route-id="${route.id}" title="Закрепить">
             <i class="fas fa-thumbtack"></i>
           </button>
@@ -220,18 +273,21 @@ export class RouteController {
       <div class="time-group">
         <div class="time-row">
           <label><i class="fas fa-clock"></i> Прибытие:</label>
-          <input type="time" value="${route.dates.startTime || ''}" 
-            data-route-id="${route.id}" data-field="startTime">
+          <div style="display: flex; gap: 6px; flex: 1;">
+            <input type="date" value="${route.dates.startDate || ''}"
+              data-route-id="${route.id}" data-field="startDate" style="flex: 1;">
+            <input type="time" value="${route.dates.startTime || ''}"
+              data-route-id="${route.id}" data-field="startTime" style="flex: 1;">
+          </div>
         </div>
         <div class="time-row">
           <label><i class="fas fa-clock"></i> Отправление:</label>
-          <input type="time" value="${route.dates.endTime || ''}" 
-            data-route-id="${route.id}" data-field="endTime">
-        </div>
-        <div class="time-row" style="justify-content: center;">
-          <span class="duration-display">
-            <i class="fas fa-hourglass-half"></i> ${stayDuration.hours}ч ${stayDuration.minutes}м
-          </span>
+          <div style="display: flex; gap: 6px; flex: 1;">
+            <input type="date" value="${route.dates.endDate || route.dates.startDate || ''}"
+              data-route-id="${route.id}" data-field="endDate">
+            <input type="time" value="${route.dates.endTime || ''}"
+              data-route-id="${route.id}" data-field="endTime" style="flex: 1;">
+          </div>
         </div>
       </div>
       <div class="notes-area">
@@ -281,6 +337,8 @@ export class RouteController {
               currentRoute.destination.address = value;
             } else if (field === 'startDate') {
               currentRoute.dates.startDate = value;
+            } else if (field === 'endDate') {
+              currentRoute.dates.endDate = value || currentRoute.dates.startDate;
             } else if (field === 'startTime') {
               currentRoute.dates.startTime = value;
             } else if (field === 'endTime') {
@@ -293,12 +351,12 @@ export class RouteController {
             this.storageService.updateRoute(route.id, currentRoute);
 
             // Если изменили время отправления, обновляем следующую точку
-            if (field === 'endTime' && currentRoute.dates.endTime) {
-              this.updateNextPointArrival(route.id, currentRoute.dates.startDate, currentRoute.dates.endTime);
+            if ((field === 'endTime' || field === 'endDate') && currentRoute.dates.endTime) {
+              this.updateNextPointArrival(route.id, currentRoute.dates.endDate || currentRoute.dates.startDate, currentRoute.dates.endTime);
             }
 
             // Перерисовка для обновления длительности
-            if (field === 'startTime' || field === 'endTime') {
+            if (field === 'startTime' || field === 'endTime' || field === 'startDate' || field === 'endDate') {
               this.renderRoutes(app);
             }
           }
@@ -358,12 +416,12 @@ export class RouteController {
     div.className = 'transition-block';
 
     // Рассчитываем длительность перехода
-    const fromDateTime = new Date(`${fromRoute.dates.startDate}T${fromRoute.dates.endTime || '00:00'}`);
+    const fromDateTime = new Date(`${fromRoute.dates.endDate || fromRoute.dates.startDate}T${fromRoute.dates.endTime || '00:00'}`);
     const toDateTime = new Date(`${toRoute.dates.startDate}T${toRoute.dates.startTime || '00:00'}`);
-    
+
     let transitionMinutes = Math.floor((toDateTime - fromDateTime) / 60000);
     if (transitionMinutes < 0) transitionMinutes += 24 * 60;
-    
+
     const transHours = Math.floor(transitionMinutes / 60);
     const transMins = transitionMinutes % 60;
 
@@ -410,10 +468,10 @@ export class RouteController {
     if (sortedRoutes.length > 0) {
       const first = sortedRoutes[0];
       const last = sortedRoutes[sortedRoutes.length - 1];
-      
+
       const firstDateTime = new Date(`${first.dates.startDate}T${first.dates.startTime || '00:00'}`);
-      const lastDateTime = new Date(`${last.dates.startDate}T${last.dates.endTime || '00:00'}`);
-      
+      const lastDateTime = new Date(`${last.dates.endDate || last.dates.startDate}T${last.dates.endTime || '00:00'}`);
+
       totalMinutes = Math.floor((lastDateTime - firstDateTime) / 60000);
     }
 
