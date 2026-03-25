@@ -50,7 +50,8 @@ class TravelPlannerApp {
       notes: '',
       status: 'planned',
       priority: 'medium',
-      isFixedTime: false
+      isFixedTime: false,
+      fixedField: null
     };
 
     if (referenceRouteId) {
@@ -67,17 +68,40 @@ class TravelPlannerApp {
             const arrivalH = String(arrivalDateTime.getHours()).padStart(2, '0');
             const arrivalM = String(arrivalDateTime.getMinutes()).padStart(2, '0');
 
+            // Длительность пребывания по умолчанию — 1 час
             const departureDateTime = new Date(arrivalDateTime.getTime() + 60 * 60000);
             const departureDate = departureDateTime.toISOString().split('T')[0];
             const departureH = String(departureDateTime.getHours()).padStart(2, '0');
             const departureM = String(departureDateTime.getMinutes()).padStart(2, '0');
 
-            routeData.dates = {
-              startDate: arrivalDate,
-              endDate: departureDate,
-              startTime: `${arrivalH}:${arrivalM}`,
-              endTime: `${departureH}:${departureM}`
+            console.log('Добавление точки после:', {
+              refDeparture: `${refRoute.dates.endDate} ${refRoute.dates.endTime}`,
+              arrival: `${arrivalDate} ${arrivalH}:${arrivalM}`,
+              departure: `${departureDate} ${departureH}:${departureM}`
+            });
+
+            routeData = {
+              destination: {
+                name: '',
+                address: ''
+              },
+              dates: {
+                startDate: arrivalDate,
+                endDate: departureDate,
+                startTime: `${arrivalH}:${arrivalM}`,
+                endTime: `${departureH}:${departureM}`
+              },
+              travelDuration: { hours: 1, minutes: 0 },
+              duration: { hours: 0, minutes: 0 },
+              details: '',
+              notes: '',
+              status: 'draft',
+              priority: 'medium',
+              isFixedTime: false,
+              fixedField: null
             };
+          } else {
+            console.warn('У предыдущей точки нет времени отправления, создаём черновик');
           }
         } else if (position === 'before') {
           // Добавляем ПЕРЕД опорной точкой
@@ -99,7 +123,8 @@ class TravelPlannerApp {
             notes: '',
             status: 'draft',
             priority: 'medium',
-            isFixedTime: false
+            isFixedTime: false,
+            fixedField: null
           };
         }
       }
@@ -167,9 +192,9 @@ class TravelPlannerApp {
       <button class="btn-dismiss" id="dismissWarning"><i class="fas fa-times"></i></button>
     `;
 
-    const timelineContainer = document.getElementById('timelineContainer');
-    if (timelineContainer) {
-      timelineContainer.parentNode.insertBefore(warningEl, timelineContainer.nextSibling);
+    const appContainer = document.querySelector('.app-container');
+    if (appContainer) {
+      appContainer.insertBefore(warningEl, appContainer.firstChild);
     }
 
     // Обработчик кнопки закрытия

@@ -6,28 +6,28 @@
 body {
     background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
     margin: 0;
-    padding: 20px;
+    padding: 10px;
     color: #1e2a3a;
     min-height: 100vh;
 }
 
 .app-container {
-    max-width: 800px;
+    max-width: 1100px;
     margin: 0 auto;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
-    border-radius: 32px;
+    border-radius: 16px;
     box-shadow: 0 24px 48px -12px rgba(0,0,0,0.12), 0 8px 16px -4px rgba(0,0,0,0.08);
-    padding: 24px 28px 36px;
+    padding: 16px 20px 24px;
     border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 h1 {
-    font-size: 1.8rem;
-    margin: 0 0 8px 0;
+    font-size: 1.5rem;
+    margin: 0 0 4px 0;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     flex-wrap: wrap;
     justify-content: space-between;
     font-weight: 700;
@@ -35,10 +35,10 @@ h1 {
 }
 
 h1 small {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 500;
     background: linear-gradient(135deg, #e9edf2 0%, #dbe4ef 100%);
-    padding: 6px 14px;
+    padding: 4px 12px;
     border-radius: 40px;
     color: #475569;
     box-shadow: 0 2px 4px rgba(0,0,0,0.04);
@@ -47,50 +47,51 @@ h1 small {
 
 .sub {
     color: #64748b;
-    border-left: 4px solid #3b82f6;
-    padding-left: 14px;
-    margin: 8px 0 24px 0;
-    font-size: 0.9rem;
-    line-height: 1.5;
+    border-left: 3px solid #3b82f6;
+    padding-left: 10px;
+    margin: 4px 0 12px 0;
+    font-size: 0.8rem;
+    line-height: 1.4;
     background: linear-gradient(90deg, rgba(59,130,246,0.05) 0%, transparent 100%);
-    padding-top: 8px;
-    padding-bottom: 8px;
+    padding-top: 6px;
+    padding-bottom: 6px;
     border-radius: 0 8px 8px 0;
 }
 
 .timeline {
-    padding: 20px 0;
+    padding: 10px 0;
 }
 
 .timeline-track {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
     width: 100%;
+    justify-content: flex-start;
 }
 
 /* Карточка точки */
 .checkpoint-card {
     background: white;
-    border-radius: 20px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-    width: 100%;
-    max-width: 520px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    width: 680px;
+    flex-shrink: 0;
     transition: all 0.2s;
     border: 1px solid #e2e8f0;
     position: relative;
     overflow: visible;
-    margin: 0 auto;
+    margin: 0;
+    padding: 10px 0 10px 140px;
 }
 
 .checkpoint-card:hover {
-    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    transform: translateY(-1px);
 }
 
 .checkpoint-card.pinned {
-    border-left: 5px solid #f59e0b;
+    border-left: 4px solid #f59e0b;
     background: #fffef7;
 }
 
@@ -100,15 +101,16 @@ h1 small {
     left: 0;
     top: 0;
     bottom: 0;
-    width: 70px;
+    width: 130px;
     background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
     border-right: 1px solid #dbeafe;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    padding: 12px 6px;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 6px;
     z-index: 1;
-    border-radius: 20px 0 0 20px;
+    border-radius: 12px 0 0 12px;
 }
 
 .checkpoint-card.pinned .checkpoint-time-sidebar {
@@ -135,7 +137,7 @@ h1 small {
 }
 
 .time-badge .time-value {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     font-weight: 700;
     color: #1e40af;
     line-height: 1.2;
@@ -147,18 +149,18 @@ h1 small {
 }
 
 .time-badge .time-label {
-    font-size: 0.45rem;
+    font-size: 0.55rem;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.4px;
     margin-top: 2px;
     font-weight: 600;
 }
 
 .time-badge .duration-value {
-    font-size: 0.5rem;
+    font-size: 0.6rem;
     color: #9ca3af;
-    margin-top: 4px;
+    margin-top: 2px;
     font-weight: 600;
     background: rgba(255,255,255,0.6);
     padding: 2px 4px;
@@ -201,13 +203,13 @@ h1 small {
     border: none;
     cursor: pointer;
     color: #64748b;
-    padding: 6px;
-    border-radius: 8px;
+    padding: 4px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.15s;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
 }
 
 .card-header .pin-btn:hover,
@@ -229,6 +231,16 @@ h1 small {
     background: rgba(16, 185, 129, 0.1);
     border: 1px solid rgba(16, 185, 129, 0.3);
     position: relative;
+}
+
+.time-badge.duration.fixed {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.time-badge.departure.fixed {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .time-badge .fix-time-btn {
@@ -353,28 +365,46 @@ h1 small {
 
 /* Группа времени */
 .time-group {
-    padding: 12px 12px 12px 78px;
+    padding: 8px 8px 8px 10px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     background: white;
 }
 
 .time-row {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 0.8rem;
+    gap: 8px;
+    font-size: 0.75rem;
 }
 
 .time-row label {
-    width: 140px;
+    width: 160px;
     font-weight: 600;
     color: #475569;
     display: flex;
     align-items: center;
     gap: 6px;
     flex-shrink: 0;
+}
+
+.time-row label.clickable-label {
+    cursor: pointer;
+    transition: color 0.2s;
+    user-select: none;
+}
+
+.time-row label.clickable-label:hover {
+    color: #3b82f6;
+}
+
+.time-row label.clickable-label.fixed {
+    color: #10b981;
+}
+
+.time-row label.clickable-label.fixed i {
+    color: #10b981;
 }
 
 .time-row i {
@@ -384,10 +414,10 @@ h1 small {
 
 .time-row input {
     flex: 1;
-    padding: 6px 8px;
+    padding: 4px 6px;
     border: 1px solid #cbd5e6;
-    border-radius: 10px;
-    font-size: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
     background: #fefefe;
     transition: all 0.2s;
     font-weight: 500;
@@ -395,23 +425,23 @@ h1 small {
 
 .time-row input[type="date"] {
     min-width: 0;
-    font-size: 0.7rem;
-    padding: 6px 5px;
+    font-size: 0.68rem;
+    padding: 4px 4px;
 }
 
 .time-row input:focus {
     outline: none;
     border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.08);
     background: white;
 }
 
 .time-row .point-name-input-inline {
     flex: 1;
-    padding: 6px 8px;
+    padding: 4px 6px;
     border: 1px solid #cbd5e6;
-    border-radius: 10px;
-    font-size: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
     background: #fefefe;
     transition: all 0.2s;
     font-weight: 500;
@@ -420,41 +450,41 @@ h1 small {
 .time-row .point-name-input-inline:focus {
     outline: none;
     border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.08);
     background: white;
 }
 
 /* Заметки */
 .notes-area {
-    padding: 4px 12px 8px 78px;
+    padding: 4px 8px 6px 8px;
 }
 
 .notes-area textarea {
     width: 100%;
     border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 6px 10px;
-    font-size: 0.75rem;
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 0.7rem;
     resize: vertical;
     font-family: inherit;
     background: #fafcff;
     transition: all 0.2s;
     line-height: 1.4;
-    min-height: 40px;
+    min-height: 32px;
 }
 
 .notes-area textarea:focus {
     outline: none;
     border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.08);
     background: white;
 }
 
 /* Контейнер для кнопок добавления точек */
 .add-point-buttons {
     display: flex;
-    gap: 8px;
-    margin: 6px 12px 12px 78px;
+    gap: 6px;
+    margin: 4px 8px 8px 8px;
 }
 
 /* Кнопка добавления перед */
@@ -462,9 +492,9 @@ h1 small {
     flex: 1;
     background: linear-gradient(135deg, #eff3f8 0%, #e2e8f0 100%);
     border: 1px solid #e2e8f0;
-    border-radius: 30px;
-    padding: 7px 12px;
-    font-size: 0.65rem;
+    border-radius: 16px;
+    padding: 5px 10px;
+    font-size: 0.62rem;
     font-weight: 600;
     color: #2c5f8a;
     cursor: pointer;
@@ -480,7 +510,7 @@ h1 small {
     background: linear-gradient(135deg, #e2e8f0 0%, #d1d9e6 100%);
     border-color: #cbd5e1;
     transform: translateY(-1px);
-    box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
 /* Кнопка добавления после */
@@ -488,9 +518,9 @@ h1 small {
     flex: 1;
     background: linear-gradient(135deg, #eff3f8 0%, #e2e8f0 100%);
     border: 1px solid #e2e8f0;
-    border-radius: 30px;
-    padding: 7px 12px;
-    font-size: 0.65rem;
+    border-radius: 16px;
+    padding: 5px 10px;
+    font-size: 0.62rem;
     font-weight: 600;
     color: #2c5f8a;
     cursor: pointer;
@@ -544,11 +574,15 @@ h1 small {
     align-items: center;
     gap: 12px;
     padding: 12px 16px;
-    margin: 12px 20px;
+    margin: 10px auto;
+    max-width: 1100px;
     background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
     border: 2px solid #f59e0b;
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+    position: sticky;
+    top: 10px;
+    z-index: 1000;
 }
 
 .arrival-warning i {
@@ -632,49 +666,53 @@ h1 small {
 
 /* Блок перехода */
 .transition-block {
-    width: 100%;
-    max-width: 400px;
+    width: 120px;
+    flex-shrink: 0;
     background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%);
-    border-radius: 40px;
-    padding: 14px 10px;
+    border-radius: 20px;
+    padding: 8px 10px;
     text-align: center;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     border: 1px solid #dee4ec;
     transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .transition-block:hover {
-    box-shadow: 0 6px 16px rgba(0,0,0,0.1);
-    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: scale(1.01);
 }
 
 .transition-arrow {
-    font-size: 1.6rem;
+    font-size: 1.2rem;
     color: #3b82f6;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     filter: drop-shadow(0 2px 3px rgba(59,130,246,0.3));
 }
 
 .transition-info {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 600;
     background: white;
-    border-radius: 28px;
-    padding: 6px 10px;
-    margin: 6px 0;
+    border-radius: 16px;
+    padding: 4px 8px;
+    margin: 4px 0;
     display: flex;
     justify-content: center;
-    gap: 12px;
+    gap: 8px;
     flex-wrap: wrap;
     align-items: center;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
 .transition-duration-input {
     background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 14px;
+    font-size: 0.65rem;
     font-weight: 600;
     color: #4338ca;
     border: 1px solid rgba(99,102,241,0.15);
@@ -700,46 +738,46 @@ h1 small {
 .btn-primary {
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     border: none;
-    padding: 13px 28px;
-    border-radius: 60px;
+    padding: 8px 20px;
+    border-radius: 40px;
     font-weight: 600;
     color: white;
     display: inline-flex;
-    gap: 10px;
+    gap: 8px;
     align-items: center;
     cursor: pointer;
-    box-shadow: 0 4px 14px rgba(59,130,246,0.35);
+    box-shadow: 0 2px 10px rgba(59,130,246,0.3);
     transition: all 0.2s;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     letter-spacing: 0.2px;
 }
 
 .btn-primary:hover {
     background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(59,130,246,0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(59,130,246,0.35);
 }
 
 .btn-primary:active {
     transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(59,130,246,0.3);
+    box-shadow: 0 2px 6px rgba(59,130,246,0.25);
 }
 
 /* Панель сводки */
 .summary {
-    margin-top: 32px;
+    margin-top: 16px;
     background: linear-gradient(135deg, #eef3fc 0%, #e0e7ff 100%);
-    border-radius: 28px;
-    padding: 16px 24px;
+    border-radius: 16px;
+    padding: 10px 16px;
     display: flex;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 16px;
-    font-size: 0.9rem;
+    gap: 12px;
+    font-size: 0.75rem;
     font-weight: 600;
     color: #1e40af;
     border: 1px solid rgba(59,130,246,0.15);
-    box-shadow: 0 4px 12px rgba(59,130,246,0.08);
+    box-shadow: 0 2px 8px rgba(59,130,246,0.08);
 }
 
 .summary span {
@@ -931,33 +969,54 @@ h1 small {
 
 /* Адаптивность */
 @media (max-width: 700px) {
-    .checkpoint-card, .transition-block { max-width: 100%; }
-    h1 { font-size: 1.4rem; }
-    .summary { flex-direction: column; gap: 8px; }
-    
-    .checkpoint-time-sidebar {
-        width: 56px;
-        padding: 10px 4px;
+    .app-container {
+        max-width: 100%;
+        padding: 12px 16px 20px;
+        border-radius: 12px;
     }
-    
+
+    .timeline-track {
+        justify-content: center;
+    }
+
+    .checkpoint-card {
+        width: 100%;
+        max-width: 680px;
+    }
+
+    h1 { font-size: 1.3rem; }
+    h1 small { font-size: 0.7rem; }
+
+    .summary { flex-direction: column; gap: 8px; }
+
+    .checkpoint-time-sidebar {
+        width: 100px;
+        padding: 8px 4px;
+    }
+
     .time-badge .time-value {
+        font-size: 0.65rem;
+    }
+
+    .time-badge .time-label {
+        font-size: 0.5rem;
+    }
+
+    .time-row label {
+        width: 130px;
         font-size: 0.7rem;
     }
-    
-    .time-badge .time-label {
-        font-size: 0.4rem;
-    }
-    
+
     .card-header, .time-group, .notes-area, .add-after-btn, .new-point-form {
-        padding-left: 62px;
+        padding-left: 0;
     }
-    
+
     .card-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
     }
-    
+
     .card-actions-left, .card-actions-right {
         display: flex;
         gap: 4px;

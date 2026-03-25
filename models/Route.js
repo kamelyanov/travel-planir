@@ -69,6 +69,9 @@ export class Route {
     // Флаг закреплённого времени прибытия
     this.isFixedTime = data.isFixedTime || false;
 
+    // Закреплённое поле для пересчёта времени (arrival, duration, departure)
+    this.fixedField = data.fixedField || null;
+
     // Погода
     this.weather = {
       condition: data.weather?.condition || '',
@@ -179,6 +182,7 @@ export class Route {
       tags: this.tags,
       priority: this.priority,
       isFixedTime: this.isFixedTime,
+      fixedField: this.fixedField,
       contacts: this.contacts
     };
   }
