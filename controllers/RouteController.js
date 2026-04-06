@@ -71,18 +71,21 @@ export class RouteController {
 
       const route = new Route(routeData);
 
+      // Определяем направление маршрута
+      const hasFinishRoute = trip.routes.some(r => r.pointType === 'finish');
+
       if (refRouteId) {
         const refIndex = trip.routes.findIndex(r => r.id === refRouteId);
         if (refIndex !== -1) {
-          if (position === 'before') {
-            trip.routes.splice(refIndex, 0, route);
-          } else {
-            trip.routes.splice(refIndex + 1, 0, route);
-          }
+          // Добавляем ПЕРЕД или ПОСЛЕ — новая карточка всегда нормальная
+          route.pointType = 'normal';
+          trip.routes.splice(position === 'before' ? refIndex : refIndex + 1, 0, route);
         } else {
           trip.routes.push(route);
         }
       } else {
+        // Добавляем в конец — новая карточка всегда нормальная
+        route.pointType = 'normal';
         trip.routes.push(route);
       }
 
@@ -191,6 +194,12 @@ export class RouteController {
     if (!timelineTrack) return;
     timelineTrack.innerHTML = '';
 
+    // Показываем/скрываем кнопку сброса
+    const resetBtn = document.getElementById('resetRouteBtn');
+    if (resetBtn) {
+      resetBtn.style.display = this.trips.length === 0 ? 'none' : '';
+    }
+
     if (this.trips.length === 0) {
       timelineTrack.innerHTML = `
         <div style="text-align: center; color: #64748b; padding: 40px;">
@@ -268,8 +277,11 @@ export class RouteController {
     });
 
     // Рендерим карточки
+    const hasFinishRoute = trip.routes.some(r => r.pointType === 'finish');
+    const isFirstStart = !hasFinishRoute;
     trip.routes.forEach((route, index) => {
-      const cardElement = this.createCheckpointCard(route, app, index, trip.id);
+      const isLast = index === trip.routes.length - 1;
+      const cardElement = this.createCheckpointCard(route, app, index, trip.id, isLast, trip.routes.length, isFirstStart);
       trackDiv.appendChild(cardElement);
 
       if (index < trip.routes.length - 1) {
@@ -283,7 +295,7 @@ export class RouteController {
   /**
    * Создаёт карточку точки
    */
-  createCheckpointCard(route, app, index = 0, tripId = '') {
+  createCheckpointCard(route, app, index = 0, tripId = '', isLast = false, routeCount = 0, isFirstStart = true) {
     const div = document.createElement('div');
     div.className = 'checkpoint-card';
     if (route.isLocked) div.classList.add('locked');
@@ -391,6 +403,7 @@ export class RouteController {
         <textarea placeholder="Заметки..." data-route-id="${route.id}" data-trip-id="${tripId}" data-field="notes" ${route.isLocked ? 'readonly' : ''}>${route.notes || route.details || ''}</textarea>
       </div>
       ${!isStart && !isFinish ? '' : `
+      ${index === 0 || routeCount <= 1 ? `
       <div class="point-type-toggle ${route.isLocked ? 'locked' : ''}">
         <span class="point-type-label ${isStart ? 'active' : ''}" data-route-id="${route.id}" data-trip-id="${tripId}" data-type="start">
           <i class="fas fa-play"></i> Стартовая
@@ -399,7 +412,20 @@ export class RouteController {
           <i class="fas fa-flag-checkered"></i> Финишная
         </span>
       </div>
+      ` : ''}
       `}
+      ${routeCount > 1 ? `
+      ${isFirstStart && isLast ? `
+      <button class="btn-set-status ${route.pointType === 'finish' ? 'active' : ''}" data-route-id="${route.id}" data-trip-id="${tripId}">
+        <i class="fas fa-flag-checkered"></i> ${route.pointType === 'finish' ? '✓ Финишная' : 'Сделать финишной'}
+      </button>
+      ` : ''}
+      ${!isFirstStart && index === 0 && route.pointType !== 'finish' ? `
+      <button class="btn-set-status ${route.pointType === 'start' ? 'active' : ''}" data-route-id="${route.id}" data-trip-id="${tripId}">
+        <i class="fas fa-play"></i> ${route.pointType === 'start' ? '✓ Стартовая' : 'Сделать стартовой'}
+      </button>
+      ` : ''}
+      ` : ''}
       <div class="add-point-buttons">
         ${!isStart ? `
         <button class="add-before-btn" data-route-id="${route.id}" data-trip-id="${tripId}">
@@ -413,6 +439,31 @@ export class RouteController {
         ` : ''}
       </div>
     `;
+
+    // Кнопка "Сделать финишной/стартовой" на последней карточке
+    const setStatusBtn = div.querySelector('.btn-set-status');
+    if (setStatusBtn) {
+      setStatusBtn.addEventListener('click', () => {
+        const trip = this.trips.find(t => t.id === tripId);
+        if (!trip) return;
+
+        const hasFinishRoute = trip.routes.some(r => r.pointType === 'finish');
+        const isFirstStart = !hasFinishRoute;
+        const targetStatus = isFirstStart ? 'finish' : 'start';
+
+        // Снимаем целевой статус со всех кроме текущей
+        trip.routes.forEach(r => {
+          if (r.id !== route.id && r.pointType === targetStatus) {
+            r.pointType = 'normal';
+          }
+        });
+
+        // Переключаем текущую
+        route.pointType = route.pointType === targetStatus ? 'normal' : targetStatus;
+        this.storageService.updateTrip(tripId, trip);
+        this.renderAllTrips(app);
+      });
+    }
 
     // Обработчики
     const deleteBtn = div.querySelector('.delete-btn');

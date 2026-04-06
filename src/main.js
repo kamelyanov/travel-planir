@@ -20,6 +20,22 @@ class TravelPlannerApp {
       btn.addEventListener('click', () => this.createRoute());
       btn.title = 'Создаёт ещё один маршрут';
     }
+
+    const resetBtn = document.getElementById('resetRouteBtn');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => this.resetRoute());
+    }
+  }
+
+  /**
+   * Сбрасывает весь маршрут
+   */
+  resetRoute() {
+    if (confirm('Удалить все маршруты? Это действие нельзя отменить.')) {
+      this.storageService.clearAll();
+      this.routeController.trips = [];
+      this.renderInitialView();
+    }
   }
 
   /**

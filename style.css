@@ -796,6 +796,43 @@ input[readonly]:focus, textarea[readonly]:focus {
     pointer-events: none;
 }
 
+/* Кнопка "Сделать финишной/стартовой" */
+.btn-set-status {
+    display: block;
+    width: calc(100% - 16px);
+    margin: 4px 8px 8px 8px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-set-status:hover {
+    background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+    border-color: #a5b4fc;
+    color: #4338ca;
+}
+
+.btn-set-status.active {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    border-color: #86efac;
+    border-style: solid;
+    color: #16a34a;
+}
+
+.btn-set-status.active:hover {
+    background: linear-gradient(135deg, #bbf7d0 0%, #86efac 100%);
+}
+
 /* Переключатель типа точки */
 .point-type-toggle {
     display: flex;
@@ -1085,6 +1122,39 @@ input[readonly]:focus, textarea[readonly]:focus {
 .btn-primary:active {
     transform: translateY(0);
     box-shadow: 0 2px 6px rgba(59,130,246,0.25);
+}
+
+/* Кнопка сброса */
+.reset-section {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+    padding-bottom: 8px;
+}
+
+.btn-reset {
+    background: transparent;
+    border: 1px solid #e2e8f0;
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-weight: 500;
+    color: #94a3b8;
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.75rem;
+}
+
+.btn-reset:hover {
+    background: #fef2f2;
+    border-color: #fca5a5;
+    color: #dc2626;
+}
+
+.btn-reset:active {
+    transform: scale(0.97);
 }
 
 /* Панель сводки */
