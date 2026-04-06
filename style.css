@@ -1150,56 +1150,280 @@ input[readonly]:focus, textarea[readonly]:focus {
 
 /* Адаптивность */
 @media (max-width: 700px) {
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        padding: 6px;
+        overflow-x: hidden;
+    }
+
     .app-container {
         max-width: 100%;
-        padding: 12px 16px 20px;
-        border-radius: 12px;
+        padding: 10px 8px 16px;
+        border-radius: 10px;
+        overflow-x: hidden;
+    }
+
+    h1 {
+        font-size: 1.1rem;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    h1 small { font-size: 0.65rem; }
+
+    .sub {
+        font-size: 0.7rem;
+        padding-left: 6px;
     }
 
     .timeline-track {
-        justify-content: center;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
     }
 
+    /* Карточка точки — полная ширина */
     .checkpoint-card {
         width: 100%;
-        max-width: 680px;
+        max-width: 100%;
+        padding: 6px 0 6px 90px;
+        border-radius: 10px;
+        margin: 0;
     }
 
-    h1 { font-size: 1.3rem; }
-    h1 small { font-size: 0.7rem; }
+    .checkpoint-card.locked {
+        border-color: #22c55e;
+        box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.15);
+    }
 
-    .summary { flex-direction: column; gap: 8px; }
-
+    /* Боковая панель — уже */
     .checkpoint-time-sidebar {
-        width: 100px;
-        padding: 8px 4px;
+        width: 82px;
+        padding: 6px 3px;
+        gap: 5px;
+        border-radius: 10px 0 0 10px;
     }
 
     .time-badge .time-value {
-        font-size: 0.65rem;
+        font-size: 0.6rem;
+    }
+
+    .time-badge .duration-value {
+        font-size: 0.55rem;
     }
 
     .time-badge .time-label {
-        font-size: 0.5rem;
+        font-size: 0.48rem;
+    }
+
+    /* Шапка карточки */
+    .card-header {
+        padding: 6px 6px 6px 48px;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+
+    /* Строки времени */
+    .time-group {
+        padding: 4px 4px 4px 6px;
+        gap: 4px;
+    }
+
+    .time-row {
+        flex-wrap: wrap;
+        gap: 4px;
     }
 
     .time-row label {
-        width: 130px;
+        width: 100%;
+        font-size: 0.65rem;
+        gap: 4px;
+        margin-bottom: 2px;
+    }
+
+    .time-row input {
+        font-size: 0.65rem;
+        padding: 3px 5px;
+    }
+
+    .time-row input[type="date"] {
+        font-size: 0.6rem;
+        padding: 3px 4px;
+    }
+
+    /* Длительность */
+    .duration-input {
+        font-size: 0.75rem;
+        padding: 4px 6px;
+    }
+
+    /* Заметки */
+    .notes-area {
+        padding: 2px 4px 4px 4px;
+    }
+
+    .notes-area textarea {
+        font-size: 0.65rem;
+        padding: 3px 5px;
+        min-height: 26px;
+    }
+
+    /* Тогл типа точки */
+    .point-type-toggle {
+        margin: 3px 4px 4px 4px;
+    }
+
+    .point-type-label {
+        padding: 4px 8px;
+        font-size: 0.6rem;
+    }
+
+    /* Кнопки добавления точки */
+    .add-point-buttons {
+        margin: 3px 4px 6px 4px;
+        gap: 4px;
+    }
+
+    .add-before-btn,
+    .add-after-btn {
+        padding: 4px 6px;
+        font-size: 0.55rem;
+        border-radius: 10px;
+    }
+
+    /* Блок перехода */
+    .transition-block {
+        width: 160px;
+        max-width: 100%;
+        padding: 4px;
+        border-radius: 8px;
+    }
+
+    .transition-arrow {
+        height: 10px;
+        font-size: 0.8rem;
+    }
+
+    .transition-info {
+        gap: 2px;
+    }
+
+    .transition-duration-input {
+        font-size: 0.7rem;
+        padding: 2px 4px;
+    }
+
+    .transition-time-btns {
+        grid-template-columns: 1fr 1fr;
+        gap: 2px;
+    }
+
+    .time-btn {
+        font-size: 0.5rem;
+        padding: 2px 3px;
+    }
+
+    .transition-notes {
+        gap: 2px;
+    }
+
+    .transition-note-input {
+        font-size: 0.65rem;
+        padding: 2px 4px;
+        min-height: 18px;
+    }
+
+    .transition-emoji-btns {
+        max-height: 22px;
+    }
+
+    .emoji-btn {
+        font-size: 0.85rem;
+        padding: 2px 3px;
+    }
+
+    /* Сводка и название */
+    .route-summary {
+        flex-direction: column;
+        gap: 4px;
+        padding: 6px 10px;
         font-size: 0.7rem;
     }
 
-    .card-header, .time-group, .notes-area, .add-after-btn, .new-point-form {
-        padding-left: 0;
-    }
-
-    .card-header {
-        flex-direction: column;
-        align-items: flex-start;
+    .route-details {
+        flex-wrap: wrap;
         gap: 8px;
+        font-size: 0.6rem;
+        padding: 3px 8px;
     }
 
-    .card-actions-left, .card-actions-right {
-        display: flex;
-        gap: 4px;
+    .route-title-input {
+        margin-bottom: 6px;
+    }
+
+    .route-title-input input,
+    .route-title-input .route-title-text {
+        font-size: 0.95rem;
+    }
+
+    /* Панель сводки (старая) */
+    .summary {
+        flex-direction: column;
+        gap: 6px;
+        padding: 8px 12px;
+        font-size: 0.7rem;
+    }
+
+    /* Кнопка создания */
+    .global-add {
+        margin-top: 20px;
+    }
+
+    .btn-primary {
+        padding: 7px 16px;
+        font-size: 0.75rem;
+    }
+
+    /* Попап подтверждения */
+    .confirm-dialog {
+        min-width: 260px;
+        max-width: 90%;
+        padding: 18px 16px 14px;
+    }
+
+    .confirm-dialog h3 {
+        font-size: 0.95rem;
+    }
+
+    .confirm-dialog p {
+        font-size: 0.8rem;
+    }
+
+    .confirm-actions button {
+        padding: 6px 14px;
+        font-size: 0.75rem;
+    }
+
+    /* Предупреждение о времени прибытия */
+    .arrival-warning {
+        margin: 6px;
+        padding: 8px 10px;
+        max-width: calc(100% - 12px);
+    }
+
+    .arrival-warning i {
+        font-size: 1.2rem;
+    }
+
+    .arrival-warning .warning-text {
+        font-size: 0.75rem;
+    }
+
+    .arrival-warning .btn-dismiss {
+        padding: 3px;
     }
 }
+
