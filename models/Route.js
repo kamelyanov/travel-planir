@@ -41,7 +41,7 @@ export class Route {
     this.isFixedTime = data.isFixedTime || false;
 
     // Закреплённое поле для пересчёта времени (arrival, duration, departure)
-    this.fixedField = data.fixedField || null;
+    this.fixedField = data.fixedField || [];
 
     // Блокировка полей карточки (pin)
     this.isLocked = data.isLocked || false;

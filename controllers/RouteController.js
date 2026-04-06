@@ -344,23 +344,24 @@ export class RouteController {
     // Определяем тип точки по ID, а не по индексу
     const isStart = route.id === startRouteId;
     const isFinish = route.id === finishRouteId;
+    const isZeroDuration = !isStart && !isFinish && (stayDuration.hours === 0 && stayDuration.minutes === 0);
 
     div.innerHTML = `
       <div class="checkpoint-time-sidebar">
         ${!isStart ? `
-        <div class="time-badge arrival ${route.fixedField === 'arrival' ? 'fixed' : ''}">
+        <div class="time-badge arrival ${Array.isArray(route.fixedField) && route.fixedField.includes('arrival') ? 'fixed' : ''}">
           <span class="time-value">${arrivalTimeDisplay}</span>
           <span class="time-label">Прибытие</span>
         </div>
         ` : ''}
         ${!isStart && !isFinish ? `
-        <div class="time-badge duration ${route.fixedField === 'duration' ? 'fixed' : ''}">
+        <div class="time-badge duration ${Array.isArray(route.fixedField) && route.fixedField.includes('duration') ? 'fixed' : ''}">
           <span class="duration-value">${durationDisplay}</span>
           <span class="time-label">Пребывание</span>
         </div>
         ` : ''}
         ${!isFinish ? `
-        <div class="time-badge departure ${route.fixedField === 'departure' ? 'fixed' : ''}">
+        <div class="time-badge departure ${Array.isArray(route.fixedField) && route.fixedField.includes('departure') ? 'fixed' : ''}">
           <span class="time-value">${departureTimeDisplay}</span>
           <span class="time-label">Отправление</span>
         </div>
@@ -387,9 +388,10 @@ export class RouteController {
         </div>
         ${!isStart ? `
         <div class="time-row">
-          <label class="clickable-label ${route.fixedField === 'arrival' ? 'fixed' : ''}"
+          <label class="clickable-label ${Array.isArray(route.fixedField) && route.fixedField.includes('arrival') ? 'fixed' : ''}"
             data-route-id="${route.id}" data-field="arrival">
             <i class="fas fa-clock"></i> Прибытие:
+            ${Array.isArray(route.fixedField) && route.fixedField.includes('arrival') ? '<i class="fas fa-lock lock-indicator" title="Заблокировать автоматическое изменение времени"></i>' : ''}
           </label>
           <div style="display: flex; gap: 6px; flex: 1;">
             <input type="date" value="${route.dates.startDate || ''}"
@@ -401,19 +403,27 @@ export class RouteController {
         ` : ''}
         ${!isStart && !isFinish ? `
         <div class="time-row">
-          <label class="clickable-label ${route.fixedField === 'duration' ? 'fixed' : ''}"
+          <label class="clickable-label ${Array.isArray(route.fixedField) && route.fixedField.includes('duration') ? 'fixed' : ''} ${isZeroDuration ? 'zero-duration' : ''}"
             data-route-id="${route.id}" data-field="duration">
             <i class="fas fa-hourglass-half"></i> Длительность пребывания:
+            ${Array.isArray(route.fixedField) && route.fixedField.includes('duration') ? '<i class="fas fa-lock lock-indicator" title="Заблокировать автоматическое изменение времени"></i>' : ''}
           </label>
           <input type="text" class="duration-input" value="${durationDisplay}"
             data-route-id="${route.id}" data-trip-id="${tripId}" data-field="duration" style="flex: 1;" ${route.isLocked ? 'readonly' : ''}>
+          <div class="duration-adjust-btns">
+            <button type="button" class="time-btn time-btn-minus" data-add="-5" title="-5 минут">-5 мин</button>
+            <button type="button" class="time-btn time-btn-minus" data-add="-30" title="-30 минут">-30 мин</button>
+            <button type="button" class="time-btn" data-add="5" title="+5 минут">+5 мин</button>
+            <button type="button" class="time-btn" data-add="30" title="+30 минут">+30 мин</button>
+          </div>
         </div>
         ` : ''}
         ${!isFinish ? `
         <div class="time-row">
-          <label class="clickable-label ${route.fixedField === 'departure' ? 'fixed' : ''}"
+          <label class="clickable-label ${Array.isArray(route.fixedField) && route.fixedField.includes('departure') ? 'fixed' : ''}"
             data-route-id="${route.id}" data-field="departure">
             <i class="fas fa-clock"></i> Отправление:
+            ${Array.isArray(route.fixedField) && route.fixedField.includes('departure') ? '<i class="fas fa-lock lock-indicator" title="Заблокировать автоматическое изменение времени"></i>' : ''}
           </label>
           <div style="display: flex; gap: 6px; flex: 1;">
             <input type="date" value="${route.dates.endDate || route.dates.startDate || ''}"
@@ -538,7 +548,21 @@ export class RouteController {
     const pinBtn = div.querySelector('.pin-btn');
     pinBtn.addEventListener('click', () => {
       route.isLocked = !route.isLocked;
-      this.updateRouteInTrip(tripId, route.id, { isLocked: route.isLocked });
+      
+      if (route.isLocked) {
+        // При блокировке фиксируем все поля времени, которые есть в карточке
+        const fieldsToFix = ['arrival'];
+        if (!isStart && !isFinish) fieldsToFix.push('duration');
+        if (!isFinish) fieldsToFix.push('departure');
+        
+        route.fixedField = fieldsToFix;
+        this.updateRouteInTrip(tripId, route.id, { isLocked: route.isLocked, fixedField: route.fixedField });
+      } else {
+        // При разблокировке снимаем фиксацию со всех полей
+        route.fixedField = [];
+        this.updateRouteInTrip(tripId, route.id, { isLocked: route.isLocked, fixedField: route.fixedField });
+      }
+      
       this.renderAllTrips(app);
     });
 
@@ -589,7 +613,17 @@ export class RouteController {
     clickableLabels.forEach(label => {
       label.addEventListener('click', () => {
         const field = label.dataset.field;
-        route.fixedField = route.fixedField === field ? null : field;
+        // Инициализируем массив если нужно
+        if (!Array.isArray(route.fixedField)) {
+          route.fixedField = route.fixedField ? [route.fixedField] : [];
+        }
+        // Переключаем наличие поля в массиве
+        const index = route.fixedField.indexOf(field);
+        if (index > -1) {
+          route.fixedField.splice(index, 1);
+        } else {
+          route.fixedField.push(field);
+        }
         this.updateRouteInTrip(tripId, route.id, { fixedField: route.fixedField });
         this.renderAllTrips(app);
       });
@@ -624,16 +658,28 @@ export class RouteController {
             const durationMinutes = this.parseDurationString(value);
             const now = new Date();
             const today = now.toISOString().split('T')[0];
-            if (route.fixedField === 'arrival') {
+            const isFixed = (f) => Array.isArray(route.fixedField) && route.fixedField.includes(f);
+            if (isFixed('arrival')) {
               const a = new Date(`${route.dates.startDate || today}T${route.dates.startTime || '00:00'}`);
               const d = new Date(a.getTime() + durationMinutes * 60000);
               route.dates.endDate = d.toISOString().split('T')[0];
               route.dates.endTime = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-            } else if (route.fixedField === 'departure') {
+            } else if (isFixed('departure')) {
               const d = new Date(`${route.dates.endDate || today}T${route.dates.endTime || '00:00'}`);
               const a = new Date(d.getTime() - durationMinutes * 60000);
-              route.dates.startDate = a.toISOString().split('T')[0];
-              route.dates.startTime = `${String(a.getHours()).padStart(2, '0')}:${String(a.getMinutes()).padStart(2, '0')}`;
+              // Проверяем, что arrival не позже departure
+              const currentArrival = new Date(`${route.dates.startDate || today}T${route.dates.startTime || '00:00'}`);
+              if (a < currentArrival) {
+                // arrival не может быть раньше текущего arrival — duration = 0
+                app.showZeroDurationWarning(route.destination.name || 'этой точке');
+                // не меняем arrival, departure = arrival
+                route.dates.endDate = currentArrival.toISOString().split('T')[0];
+                route.dates.endTime = `${String(currentArrival.getHours()).padStart(2, '0')}:${String(currentArrival.getMinutes()).padStart(2, '0')}`;
+              } else {
+                app.hideZeroDurationWarning();
+                route.dates.startDate = a.toISOString().split('T')[0];
+                route.dates.startTime = `${String(a.getHours()).padStart(2, '0')}:${String(a.getMinutes()).padStart(2, '0')}`;
+              }
             } else {
               const a = new Date(`${route.dates.startDate || today}T${route.dates.startTime || '00:00'}`);
               const d = new Date(a.getTime() + durationMinutes * 60000);
@@ -660,6 +706,21 @@ export class RouteController {
       });
     });
 
+    // Кнопки +/- для длительности
+    div.querySelectorAll('.duration-adjust-btns .time-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const addMins = parseInt(btn.dataset.add);
+        const currentMins = this.parseDurationString(div.querySelector('.duration-input').value);
+        const newMins = Math.max(0, currentMins + addMins);
+        const nH = Math.floor(newMins / 60);
+        const nM = newMins % 60;
+        const input = div.querySelector('.duration-input');
+        input.value = `${nH}ч ${nM}мин`;
+        // Вызываем событие change для применения
+        input.dispatchEvent(new Event('change'));
+      });
+    });
+
     return div;
   }
 
@@ -674,7 +735,7 @@ export class RouteController {
     if (currentIndex < 0 || currentIndex >= trip.routes.length - 1) return;
 
     const nextRoute = trip.routes[currentIndex + 1];
-    if (nextRoute.fixedField === 'arrival') {
+    if (Array.isArray(nextRoute.fixedField) && nextRoute.fixedField.includes('arrival')) {
       const travelMinutes = (nextRoute.travelDuration?.hours || 0) * 60 + (nextRoute.travelDuration?.minutes || 0);
       const dep = new Date(`${currentDate}T${departureTime}`);
       const expected = new Date(dep.getTime() + travelMinutes * 60000);
@@ -715,27 +776,30 @@ export class RouteController {
         <div class="transition-info">
           <input type="text" class="transition-duration-input" value="${h}ч ${m}мин"
             data-from="${fromRoute.id}" data-to="${toRoute.id}" data-trip-id="${tripId}" placeholder="43 или 1 43">
-        </div>
-        <div class="transition-time-btns">
-          <button type="button" class="time-btn time-btn-minus" data-add="-5" title="-5 минут">-5 мин</button>
-          <button type="button" class="time-btn time-btn-minus" data-add="-30" title="-30 минут">-30 мин</button>
-          <button type="button" class="time-btn" data-add="5" title="+5 минут">+5 мин</button>
-          <button type="button" class="time-btn" data-add="30" title="+30 минут">+30 мин</button>
+          <div class="transition-time-btns">
+            <button type="button" class="time-btn time-btn-minus" data-add="-5" title="-5 минут">-5 мин</button>
+            <button type="button" class="time-btn time-btn-minus" data-add="-30" title="-30 минут">-30 мин</button>
+            <button type="button" class="time-btn" data-add="5" title="+5 минут">+5 мин</button>
+            <button type="button" class="time-btn" data-add="30" title="+30 минут">+30 мин</button>
+          </div>
         </div>
         <div class="transition-notes">
           <textarea class="transition-note-input" placeholder="Заметка о переезде..."
             data-trip-id="${tripId}" data-to="${toRoute.id}">${transitionNote}</textarea>
-          <div class="transition-emoji-btns">
-          <button type="button" class="emoji-btn" data-emoji="🚶" title="Пешком">🚶</button>
-          <button type="button" class="emoji-btn" data-emoji="🚇" title="Метро">🚇</button>
-          <button type="button" class="emoji-btn" data-emoji="🚌" title="Автобус">🚌</button>
-          <button type="button" class="emoji-btn" data-emoji="🚂" title="Поезд">🚂</button>
-          <button type="button" class="emoji-btn" data-emoji="✈️" title="Самолёт">✈️</button>
-          <button type="button" class="emoji-btn" data-emoji="🚗" title="Машина">🚗</button>
-          <button type="button" class="emoji-btn" data-emoji="🚕" title="Такси">🚕</button>
-          <button type="button" class="emoji-btn" data-emoji="🚁" title="Вертолёт">🚁</button>
-          <button type="button" class="emoji-btn" data-emoji="⛴️" title="Паром">⛴️</button>
-          <button type="button" class="emoji-btn" data-emoji="🏍️" title="Мотоцикл">🏍️</button>
+          <div class="emoji-dropdown-wrapper">
+            <button type="button" class="emoji-toggle" title="Выбрать транспорт">✈️</button>
+            <div class="emoji-dropdown" style="display:none;">
+              <button type="button" class="emoji-btn" data-emoji="🚶" title="Пешком">🚶</button>
+              <button type="button" class="emoji-btn" data-emoji="🚇" title="Метро">🚇</button>
+              <button type="button" class="emoji-btn" data-emoji="🚌" title="Автобус">🚌</button>
+              <button type="button" class="emoji-btn" data-emoji="🚂" title="Поезд">🚂</button>
+              <button type="button" class="emoji-btn" data-emoji="✈️" title="Самолёт">✈️</button>
+              <button type="button" class="emoji-btn" data-emoji="🚗" title="Машина">🚗</button>
+              <button type="button" class="emoji-btn" data-emoji="🚕" title="Такси">🚕</button>
+              <button type="button" class="emoji-btn" data-emoji="🚁" title="Вертолёт">🚁</button>
+              <button type="button" class="emoji-btn" data-emoji="⛴️" title="Паром">⛴️</button>
+              <button type="button" class="emoji-btn" data-emoji="🏍️" title="Мотоцикл">🏍️</button>
+            </div>
           </div>
         </div>
       </div>
@@ -750,7 +814,7 @@ export class RouteController {
 
       toRoute.travelDuration = { hours: tH, minutes: tM };
 
-      if (toRoute.fixedField !== 'arrival') {
+      if (!Array.isArray(toRoute.fixedField) || !toRoute.fixedField.includes('arrival')) {
         const fromD = new Date(`${fromRoute.dates.endDate || fromRoute.dates.startDate}T${fromRoute.dates.endTime || '00:00'}`);
         const arr = new Date(fromD.getTime() + totalMins * 60000);
         toRoute.dates.startDate = arr.toISOString().split('T')[0];
@@ -758,8 +822,22 @@ export class RouteController {
       } else {
         const toA = new Date(`${toRoute.dates.startDate}T${toRoute.dates.startTime}`);
         const dep = new Date(toA.getTime() - totalMins * 60000);
-        fromRoute.dates.endDate = dep.toISOString().split('T')[0];
-        fromRoute.dates.endTime = `${String(dep.getHours()).padStart(2, '0')}:${String(dep.getMinutes()).padStart(2, '0')}`;
+        
+        // Проверяем, что новая длительность пребывания не отрицательная
+        const fromArrival = new Date(`${fromRoute.dates.startDate || toRoute.dates.startDate}T${fromRoute.dates.startTime || '00:00'}`);
+        const newStayDuration = (dep - fromArrival) / 60000; // в минутах
+        
+        if (newStayDuration < 0) {
+          // Длительность отрицательная — ставим 0 и показываем warning
+          app.showZeroDurationWarning(fromRoute.destination.name || 'этой точке');
+          // departure = arrival (длительность = 0)
+          fromRoute.dates.endDate = fromArrival.toISOString().split('T')[0];
+          fromRoute.dates.endTime = `${String(fromArrival.getHours()).padStart(2, '0')}:${String(fromArrival.getMinutes()).padStart(2, '0')}`;
+        } else {
+          app.hideZeroDurationWarning();
+          fromRoute.dates.endDate = dep.toISOString().split('T')[0];
+          fromRoute.dates.endTime = `${String(dep.getHours()).padStart(2, '0')}:${String(dep.getMinutes()).padStart(2, '0')}`;
+        }
       }
 
       this.storageService.updateTrip(tripId, { id: tripId, routes: [fromRoute.toJSON(), toRoute.toJSON()] });
@@ -809,20 +887,35 @@ export class RouteController {
     noteInput.addEventListener('input', saveTransitionNote);
     noteInput.addEventListener('blur', saveTransitionNote);
 
-    // Раскрытие эмодзи при фокусе на поле заметки
-    const emojiBtns = div.querySelector('.transition-emoji-btns');
-    noteInput.addEventListener('focus', () => {
-      emojiBtns.classList.add('expanded');
-      // Позиционируем оверлей рядом с textarea
-      const rect = noteInput.getBoundingClientRect();
-      emojiBtns.style.left = rect.left + 'px';
-      emojiBtns.style.top = (rect.bottom + 4) + 'px';
+    // Эмодзи — раскрытие по клику на toggle, вставка по клику на emoji
+    const emojiToggle = div.querySelector('.emoji-toggle');
+    const emojiDropdown = div.querySelector('.emoji-dropdown');
+
+    emojiToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isVisible = emojiDropdown.style.display === 'flex';
+      emojiDropdown.style.display = isVisible ? 'none' : 'flex';
     });
-    noteInput.addEventListener('blur', () => {
-      // Небольшая задержка чтобы клики по эмодзи успевали сработать
-      setTimeout(() => {
-        emojiBtns.classList.remove('expanded');
-      }, 150);
+
+    div.querySelectorAll('.emoji-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const emoji = btn.dataset.emoji;
+        const start = noteInput.selectionStart;
+        const end = noteInput.selectionEnd;
+        const before = noteInput.value.substring(0, start);
+        const after = noteInput.value.substring(end);
+        noteInput.value = before + emoji + after;
+        noteInput.selectionStart = noteInput.selectionEnd = start + emoji.length;
+        saveTransitionNote();
+        emojiDropdown.style.display = 'none';
+      });
+    });
+
+    // Закрытие dropdown при клике вне
+    document.addEventListener('click', (e) => {
+      if (!div.contains(e.target)) {
+        emojiDropdown.style.display = 'none';
+      }
     });
 
     return div;

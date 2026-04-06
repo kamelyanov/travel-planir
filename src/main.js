@@ -56,7 +56,7 @@ class TravelPlannerApp {
       travelDuration: { hours: 0, minutes: 0 },
       details: '', notes: '',
       status: 'draft', priority: 'medium',
-      pointType: 'start', isFixedTime: false, fixedField: null
+      pointType: 'start', isFixedTime: false, fixedField: []
     };
 
     this.routeController.createTrip(routeData);
@@ -87,7 +87,7 @@ class TravelPlannerApp {
       travelDuration: { hours: 0, minutes: 0 },
       details: '', notes: '',
       status: 'draft', priority: 'medium',
-      pointType: 'normal', isFixedTime: false, fixedField: null
+      pointType: 'normal', isFixedTime: false, fixedField: []
     };
 
     if (referenceRouteId) {
@@ -114,7 +114,7 @@ class TravelPlannerApp {
             travelDuration: { hours: 1, minutes: 0 },
             details: '', notes: '',
             status: 'draft', priority: 'medium',
-            pointType: 'normal', isFixedTime: false, fixedField: null
+            pointType: 'normal', isFixedTime: false, fixedField: []
           };
         } else if (position === 'before' && refRoute.dates.startTime && refRoute.dates.startDate) {
           // Добавляем ПЕРЕД: новая карточка заканчивается ДО опорной
@@ -136,7 +136,7 @@ class TravelPlannerApp {
             travelDuration: { hours: 1, minutes: 0 },
             details: '', notes: '',
             status: 'draft', priority: 'medium',
-            pointType: 'normal', isFixedTime: false, fixedField: null
+            pointType: 'normal', isFixedTime: false, fixedField: []
           };
         }
       }
@@ -202,6 +202,33 @@ class TravelPlannerApp {
 
     setTimeout(() => {
       document.getElementById('dismissWarning')?.addEventListener('click', () => this.hideArrivalWarning());
+    }, 0);
+  }
+
+  hideZeroDurationWarning() {
+    document.getElementById('zeroDurationWarning')?.remove();
+  }
+
+  showZeroDurationWarning(pointName) {
+    this.hideZeroDurationWarning();
+
+    const warningEl = document.createElement('div');
+    warningEl.id = 'zeroDurationWarning';
+    warningEl.className = 'arrival-warning';
+    warningEl.innerHTML = `
+      <i class="fas fa-exclamation-triangle"></i>
+      <div class="warning-text">
+        <strong>Вы не успеете побывать в "${pointName}"</strong>
+        <p>Длительность пребывания стала равна 0.</p>
+      </div>
+      <button class="btn-dismiss" id="dismissZeroWarning"><i class="fas fa-times"></i></button>
+    `;
+
+    const appContainer = document.querySelector('.app-container');
+    if (appContainer) appContainer.insertBefore(warningEl, appContainer.firstChild);
+
+    setTimeout(() => {
+      document.getElementById('dismissZeroWarning')?.addEventListener('click', () => this.hideZeroDurationWarning());
     }, 0);
   }
 
