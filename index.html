@@ -19,19 +19,21 @@
         </div>
 
         <div class="timeline" id="timelineContainer">
+            <div class="route-summary" id="routeSummary">
+                <span><i class="fas fa-route"></i> Общая длительность: — </span>
+                <span><i class="fas fa-location-dot"></i> Всего точек: 0</span>
+            </div>
+            <div class="route-details" id="routeDetails"></div>
             <div class="timeline-track" id="timelineTrack">
                 <!-- динамическая отрисовка карточек -->
             </div>
         </div>
 
         <div class="global-add">
-            <button class="btn-primary" id="addPointBtn"><i class="fas fa-plus-circle"></i> Добавить точку</button>
+            <button class="btn-primary" id="createRouteBtn"><i class="fas fa-plus-circle"></i> Создать новый маршрут</button>
         </div>
 
-        <div class="summary" id="summaryPanel">
-            <span><i class="fas fa-route"></i> Общая длительность: — </span>
-            <span><i class="fas fa-location-dot"></i> Всего точек: 0</span>
-        </div>
+        <div class="summary" id="summaryPanel"></div>
     </div>
 
     <script type="module" src="src/main.js"></script>

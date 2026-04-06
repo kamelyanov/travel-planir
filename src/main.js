@@ -15,169 +15,134 @@ class TravelPlannerApp {
   }
 
   setupEventListeners() {
-    // Кнопка добавления точки
-    const addPointBtn = document.getElementById('addPointBtn');
-    if (addPointBtn) {
-      addPointBtn.addEventListener('click', () => this.addNewPoint());
+    const btn = document.getElementById('createRouteBtn');
+    if (btn) {
+      btn.addEventListener('click', () => this.createRoute());
+      btn.title = 'Создаёт ещё один маршрут';
     }
   }
 
   /**
-   * Добавляет новую точку
-   * @param {string|null} referenceRouteId - ID опорной точки
-   * @param {string} position - 'before' или 'after' (куда добавить)
+   * Создаёт новый трип с начальной точкой
    */
-  addNewPoint(referenceRouteId = null, position = 'after') {
+  createRoute() {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const currentH = String(now.getHours()).padStart(2, '0');
+    const currentM = String(now.getMinutes()).padStart(2, '0');
+
+    const routeData = {
+      destination: { name: '', address: '' },
+      dates: {
+        startDate: today, endDate: today,
+        startTime: `${currentH}:${currentM}`, endTime: `${currentH}:${currentM}`
+      },
+      travelDuration: { hours: 0, minutes: 0 },
+      details: '', notes: '',
+      status: 'draft', priority: 'medium',
+      pointType: 'start', isFixedTime: false, fixedField: null
+    };
+
+    this.routeController.createTrip(routeData);
+    this.renderInitialView();
+  }
+
+  /**
+   * Добавляет новую точку в трип
+   * @param {string} referenceRouteId - ID опорной точки
+   * @param {string} position - 'before' или 'after'
+   * @param {string} tripId - ID трипа
+   */
+  addNewPoint(referenceRouteId = null, position = 'after', tripId = null) {
+    if (!tripId) {
+      // Если трип не указан — берём первый
+      tripId = this.routeController.trips[0]?.id;
+      if (!tripId) return;
+    }
+
     const now = new Date();
     const today = now.toISOString().split('T')[0];
     const currentH = String(now.getHours()).padStart(2, '0');
     const currentM = String(now.getMinutes()).padStart(2, '0');
 
     let routeData = {
-      destination: {
-        name: '',
-        address: ''
-      },
-      dates: {
-        startDate: today,
-        endDate: today,
-        startTime: `${currentH}:${currentM}`,
-        endTime: `${currentH}:${currentM}`
-      },
-      travelDuration: { hours: 1, minutes: 0 },
-      duration: { hours: 0, minutes: 0 },
-      details: '',
-      notes: '',
-      status: 'planned',
-      priority: 'medium',
-      isFixedTime: false,
-      fixedField: null
+      destination: { name: '', address: '' },
+      dates: { startDate: today, endDate: today, startTime: `${currentH}:${currentM}`, endTime: `${currentH}:${currentM}` },
+      travelDuration: { hours: 0, minutes: 0 },
+      details: '', notes: '',
+      status: 'draft', priority: 'medium',
+      pointType: 'normal', isFixedTime: false, fixedField: null
     };
 
     if (referenceRouteId) {
-      const refRoute = this.routeController.getRouteById(referenceRouteId);
-      if (refRoute) {
-        if (position === 'after') {
-          // Добавляем ПОСЛЕ опорной точки
-          if (refRoute.dates.endTime && refRoute.dates.endDate) {
-            const refDepartureDateTime = new Date(`${refRoute.dates.endDate}T${refRoute.dates.endTime}`);
-            const travelMinutes = 60; // Время в пути по умолчанию — 1 час
-            const arrivalDateTime = new Date(refDepartureDateTime.getTime() + travelMinutes * 60000);
+      const result = this.routeController.findRoute(referenceRouteId);
+      if (result) {
+        const refRoute = result.route;
+        if (position === 'after' && refRoute.dates.endTime && refRoute.dates.endDate) {
+          const refDep = new Date(`${refRoute.dates.endDate}T${refRoute.dates.endTime}`);
+          const travelMin = 60;
+          const arr = new Date(refDep.getTime() + travelMin * 60000);
+          const arrD = arr.toISOString().split('T')[0];
+          const arrH = String(arr.getHours()).padStart(2, '0');
+          const arrM = String(arr.getMinutes()).padStart(2, '0');
+          const dep = new Date(arr.getTime() + 60 * 60000);
+          const depD = dep.toISOString().split('T')[0];
+          const depH = String(dep.getHours()).padStart(2, '0');
+          const depM = String(dep.getMinutes()).padStart(2, '0');
 
-            const arrivalDate = arrivalDateTime.toISOString().split('T')[0];
-            const arrivalH = String(arrivalDateTime.getHours()).padStart(2, '0');
-            const arrivalM = String(arrivalDateTime.getMinutes()).padStart(2, '0');
-
-            // Длительность пребывания по умолчанию — 1 час
-            const departureDateTime = new Date(arrivalDateTime.getTime() + 60 * 60000);
-            const departureDate = departureDateTime.toISOString().split('T')[0];
-            const departureH = String(departureDateTime.getHours()).padStart(2, '0');
-            const departureM = String(departureDateTime.getMinutes()).padStart(2, '0');
-
-            console.log('Добавление точки после:', {
-              refDeparture: `${refRoute.dates.endDate} ${refRoute.dates.endTime}`,
-              arrival: `${arrivalDate} ${arrivalH}:${arrivalM}`,
-              departure: `${departureDate} ${departureH}:${departureM}`
-            });
-
-            routeData = {
-              destination: {
-                name: '',
-                address: ''
-              },
-              dates: {
-                startDate: arrivalDate,
-                endDate: departureDate,
-                startTime: `${arrivalH}:${arrivalM}`,
-                endTime: `${departureH}:${departureM}`
-              },
-              travelDuration: { hours: 1, minutes: 0 },
-              duration: { hours: 0, minutes: 0 },
-              details: '',
-              notes: '',
-              status: 'draft',
-              priority: 'medium',
-              isFixedTime: false,
-              fixedField: null
-            };
-          } else {
-            console.warn('У предыдущей точки нет времени отправления, создаём черновик');
-          }
-        } else if (position === 'before') {
-          // Добавляем ПЕРЕД опорной точкой
-          // Создаём пустую карточку (черновик), пользователь сам введёт данные
           routeData = {
-            destination: {
-              name: '',
-              address: ''
-            },
-            dates: {
-              startDate: today,
-              endDate: today,
-              startTime: `${currentH}:${currentM}`,
-              endTime: `${currentH}:${currentM}`
-            },
-            travelDuration: { hours: 0, minutes: 0 },
-            duration: { hours: 0, minutes: 0 },
-            details: '',
-            notes: '',
-            status: 'draft',
-            priority: 'medium',
-            isFixedTime: false,
-            fixedField: null
+            destination: { name: '', address: '' },
+            dates: { startDate: arrD, endDate: depD, startTime: `${arrH}:${arrM}`, endTime: `${depH}:${depM}` },
+            travelDuration: { hours: 1, minutes: 0 },
+            details: '', notes: '',
+            status: 'draft', priority: 'medium',
+            pointType: 'normal', isFixedTime: false, fixedField: null
           };
         }
       }
     }
 
-    this.routeController.addRoute(routeData, referenceRouteId, position);
+    this.routeController.addRouteToTrip(tripId, routeData, referenceRouteId, position);
     this.renderInitialView();
   }
 
   renderInitialView() {
-    this.routeController.renderRoutes(this);
+    this.routeController.renderAllTrips(this);
   }
 
-  /**
-   * Парсит строку длительности в формате "1ч 30м", "1:30", "90" (минуты)
-   */
   parseDuration(durationStr) {
     if (!durationStr) return 0;
 
+    // Формат "ЧЧ ММ" (через пробел) → часы и минуты
+    const spaceMatch = durationStr.match(/^(\d+)\s+(\d+)$/);
+    if (spaceMatch) {
+      return parseInt(spaceMatch[1]) * 60 + parseInt(spaceMatch[2]);
+    }
+
+    // Формат "Чч ММм"
     const chMatch = durationStr.match(/(\d+)\s*ч/);
     const mMatch = durationStr.match(/(\d+)\s*м/);
-
     if (chMatch || mMatch) {
       const hours = chMatch ? parseInt(chMatch[1]) : 0;
       const minutes = mMatch ? parseInt(mMatch[1]) : 0;
       return hours * 60 + minutes;
     }
 
+    // Формат "ЧЧ:ММ"
     if (durationStr.includes(':')) {
       const [h, m] = durationStr.split(':').map(Number);
       return (h || 0) * 60 + (m || 0);
     }
 
+    // Просто число = минуты
     const num = parseInt(durationStr);
     return isNaN(num) ? 0 : num;
   }
 
-  /**
-   * Показывает предупреждение о том, что не успеваем к закреплённому времени
-   * @param {string} nextPointName - Название следующей точки
-   * @param {Date} expectedArrivalDateTime - Ожидаемое время прибытия
-   * @param {Date} fixedArrivalDateTime - Закреплённое время прибытия
-   */
   showArrivalWarning(nextPointName, expectedArrivalDateTime, fixedArrivalDateTime) {
-    const expectedDate = expectedArrivalDateTime.toLocaleDateString('ru-RU', {
-      day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'
-    });
-    const fixedDate = fixedArrivalDateTime.toLocaleDateString('ru-RU', {
-      day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'
-    });
-
-    // Удаляем предыдущее предупреждение если есть
     this.hideArrivalWarning();
+    const expectedDate = expectedArrivalDateTime.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    const fixedDate = fixedArrivalDateTime.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 
     const warningEl = document.createElement('div');
     warningEl.id = 'arrivalWarning';
@@ -193,30 +158,19 @@ class TravelPlannerApp {
     `;
 
     const appContainer = document.querySelector('.app-container');
-    if (appContainer) {
-      appContainer.insertBefore(warningEl, appContainer.firstChild);
-    }
+    if (appContainer) appContainer.insertBefore(warningEl, appContainer.firstChild);
 
-    // Обработчик кнопки закрытия
     setTimeout(() => {
-      document.getElementById('dismissWarning')?.addEventListener('click', () => {
-        this.hideArrivalWarning();
-      });
+      document.getElementById('dismissWarning')?.addEventListener('click', () => this.hideArrivalWarning());
     }, 0);
   }
 
-  /**
-   * Скрывает предупреждение
-   */
   hideArrivalWarning() {
-    const warningEl = document.getElementById('arrivalWarning');
-    if (warningEl) {
-      warningEl.remove();
-    }
+    const el = document.getElementById('arrivalWarning');
+    if (el) el.remove();
   }
 }
 
-// Запуск приложения при загрузке DOM
 document.addEventListener('DOMContentLoaded', () => {
   new TravelPlannerApp();
 });

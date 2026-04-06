@@ -1,300 +1,343 @@
 import { Route } from '../models/Route.js';
+import { Trip } from '../models/Trip.js';
 import { StorageService } from '../services/StorageService.js';
 import { validateRoute } from '../utils/validators.js';
 
 /**
- * Контроллер для управления маршрутами
+ * Контроллер для управления маршрутами (поддержка нескольких трипов)
  */
 export class RouteController {
   constructor(storageService) {
     this.storageService = storageService;
-    this.routes = [];
-    this.loadRoutes();
+    this.trips = [];
+    this.loadTrips();
   }
 
   /**
-   * Загружает маршруты из хранилища
+   * Загружает трипы из хранилища
    */
-  loadRoutes() {
-    const routesData = this.storageService.loadRoutes();
-    this.routes = routesData.map(data => new Route(data));
+  loadTrips() {
+    const tripsData = this.storageService.loadTrips();
+    this.trips = tripsData.map(data => {
+      const trip = new Trip(data);
+      trip.routes = (data.routes || []).map(r => new Route(r));
+      return trip;
+    });
   }
 
   /**
-   * Добавляет новый маршрут
-   * @param {Object} routeData - Данные маршрута
-   * @param {string|null} referenceRouteId - ID опорной точки
-   * @param {string} position - 'before' или 'after'
-   * @returns {Route|null} Добавленный маршрут или null
+   * Создаёт новый трип с начальной точкой
+   * @param {Object} routeData - Данные начальной точки
+   * @returns {Trip|null} Созданный трип
    */
-  addRoute(routeData, referenceRouteId = null, position = 'after') {
+  createTrip(routeData) {
     try {
-      const route = new Route(routeData);
-
-      // Проверяем валидность через валидатор (учитывает статус draft)
       const validation = validateRoute(routeData);
       if (!validation.isValid) {
         this.showErrorMessage(validation.errors.join('; '));
         return null;
       }
 
-      if (referenceRouteId) {
-        // Вставляем точку перед или после опорной
-        const refIndex = this.routes.findIndex(r => r.id === referenceRouteId);
-        if (refIndex !== -1) {
-          if (position === 'before') {
-            this.routes.splice(refIndex, 0, route);
-          } else {
-            this.routes.splice(refIndex + 1, 0, route);
-          }
-        } else {
-          this.routes.push(route);
-        }
-      } else {
-        // Добавляем в конец
-        this.routes.push(route);
-      }
-      
-      this.storageService.addRoute(route);
-      return route;
+      const route = new Route({ ...routeData, pointType: 'start', status: 'draft' });
+      const trip = new Trip({ routes: [route] });
+      this.trips.push(trip);
+      this.storageService.addTrip(trip);
+      return trip;
     } catch (error) {
-      console.error('Ошибка при добавлении маршрута:', error);
+      console.error('Ошибка при создании трипа:', error);
       this.showErrorMessage(error.message);
       return null;
     }
   }
 
   /**
-   * Обновляет существующий маршрут
-   * @param {string} routeId - ID маршрута для обновления
-   * @param {Object} updatedData - Обновленные данные
-   * @returns {boolean} Успешно ли обновлён маршрут
+   * Добавляет точку в существующий трип
+   * @param {string} tripId - ID трипа
+   * @param {Object} routeData - Данные точки
+   * @param {string|null} refRouteId - ID опорной точки
+   * @param {string} position - 'before' или 'after'
+   * @returns {Route|null}
    */
-  updateRoute(routeId, updatedData) {
-    const routeIndex = this.routes.findIndex(route => route.id === routeId);
+  addRouteToTrip(tripId, routeData, refRouteId = null, position = 'after') {
+    const trip = this.trips.find(t => t.id === tripId);
+    if (!trip) return null;
 
-    if (routeIndex !== -1) {
-      const currentRoute = this.routes[routeIndex];
-      const mergedData = { ...currentRoute.toJSON(), ...updatedData };
-      const updatedRoute = new Route(mergedData);
-      
-      this.routes[routeIndex] = updatedRoute;
-      return this.storageService.updateRoute(routeId, updatedRoute);
+    try {
+      const validation = validateRoute(routeData);
+      if (!validation.isValid) {
+        this.showErrorMessage(validation.errors.join('; '));
+        return null;
+      }
+
+      const route = new Route(routeData);
+
+      if (refRouteId) {
+        const refIndex = trip.routes.findIndex(r => r.id === refRouteId);
+        if (refIndex !== -1) {
+          if (position === 'before') {
+            trip.routes.splice(refIndex, 0, route);
+          } else {
+            trip.routes.splice(refIndex + 1, 0, route);
+          }
+        } else {
+          trip.routes.push(route);
+        }
+      } else {
+        trip.routes.push(route);
+      }
+
+      this.storageService.updateTrip(tripId, trip);
+      return route;
+    } catch (error) {
+      console.error('Ошибка при добавлении точки:', error);
+      this.showErrorMessage(error.message);
+      return null;
     }
+  }
 
+  /**
+   * Обновляет точку в трипе
+   */
+  updateRouteInTrip(tripId, routeId, updatedData) {
+    const trip = this.trips.find(t => t.id === tripId);
+    if (!trip) return false;
+
+    const routeIndex = trip.routes.findIndex(r => r.id === routeId);
+    if (routeIndex !== -1) {
+      const currentRoute = trip.routes[routeIndex];
+      const mergedData = { ...currentRoute.toJSON(), ...updatedData };
+      trip.routes[routeIndex] = new Route(mergedData);
+      return this.storageService.updateTrip(tripId, trip);
+    }
     return false;
   }
 
   /**
-   * Удаляет маршрут
-   * @param {string} routeId - ID маршрута для удаления
-   * @returns {boolean} Успешно ли удалён маршрут
+   * Удаляет точку из трипа
    */
-  deleteRoute(routeId) {
-    this.routes = this.routes.filter(route => route.id !== routeId);
-    return this.storageService.deleteRoute(routeId);
+  deleteRouteFromTrip(tripId, routeId) {
+    const trip = this.trips.find(t => t.id === tripId);
+    if (!trip) return false;
+
+    trip.routes = trip.routes.filter(r => r.id !== routeId);
+    // Если трип пустой — удаляем его
+    if (trip.routes.length === 0) {
+      this.trips = this.trips.filter(t => t.id !== tripId);
+      this.storageService.deleteTrip(tripId);
+    } else {
+      this.storageService.updateTrip(tripId, trip);
+    }
+    return true;
   }
 
   /**
-   * Получает маршрут по ID
-   * @param {string} routeId - ID маршрута
-   * @returns {Route|null} Найденный маршрут или null
+   * Удаляет весь трип
    */
-  getRouteById(routeId) {
-    return this.routes.find(route => route.id === routeId) || null;
+  deleteTrip(tripId) {
+    this.trips = this.trips.filter(t => t.id !== tripId);
+    return this.storageService.deleteTrip(tripId);
   }
 
   /**
-   * Получает все маршруты
-   * @returns {Array} Массив маршрутов
+   * Находит трип и точку по ID точки
    */
-  getAllRoutes() {
-    return [...this.routes];
+  findRoute(routeId) {
+    for (const trip of this.trips) {
+      const route = trip.routes.find(r => r.id === routeId);
+      if (route) return { trip, route };
+    }
+    return null;
   }
 
   /**
-   * Парсит строку длительности в минутах (форматы: "1ч 30м", "1:30", "90", "1 д 2ч 30м")
-   * @param {string} durationStr - Строка длительности
-   * @returns {number} Длительность в минутах
+   * Парсит строку длительности в минутах
    */
   parseDurationString(durationStr) {
     if (!durationStr) return 0;
-
     const daysMatch = durationStr.match(/(\d+)\s*д/);
     const hoursMatch = durationStr.match(/(\d+)\s*ч/);
     const minsMatch = durationStr.match(/(\d+)\s*м/);
-
     const days = daysMatch ? parseInt(daysMatch[1]) : 0;
     const hours = hoursMatch ? parseInt(hoursMatch[1]) : 0;
     const minutes = minsMatch ? parseInt(minsMatch[1]) : 0;
-
     return days * 24 * 60 + hours * 60 + minutes;
   }
 
   /**
    * Вычисляет продолжительность пребывания
-   * @param {string} arrivalTime - Время прибытия в формате HH:MM
-   * @param {string} departureTime - Время отправления в формате HH:MM
-   * @param {string} arrivalDate - Дата прибытия в формате YYYY-MM-DD
-   * @param {string} departureDate - Дата отправления в формате YYYY-MM-DD
-   * @returns {Object} Объект с днями, часами и минутами
    */
   calculateStayDuration(arrivalTime, departureTime, arrivalDate, departureDate) {
     if (!arrivalDate || !departureDate) {
-      // Старая логика без дат
       const [arrivalH, arrivalM] = arrivalTime.split(':').map(Number);
       const [departureH, departureM] = departureTime.split(':').map(Number);
-
       let totalMinutes = (departureH * 60 + departureM) - (arrivalH * 60 + arrivalM);
       if (totalMinutes < 0) totalMinutes += 24 * 60;
-
-      const hours = Math.floor(totalMinutes / 60);
-      const minutes = totalMinutes % 60;
-      return {
-        days: 0,
-        hours: hours,
-        minutes: minutes
-      };
+      return { days: 0, hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 };
     }
-    
     const arrivalDateTime = new Date(`${arrivalDate}T${arrivalTime}`);
     const departureDateTime = new Date(`${departureDate}T${departureTime}`);
-
     let totalMinutes = Math.floor((departureDateTime - arrivalDateTime) / 60000);
-    
-    // Если разница отрицательная, считаем что отправление на следующий день
-    if (totalMinutes < 0) {
-      totalMinutes += 24 * 60;
-    }
-
+    if (totalMinutes < 0) totalMinutes += 24 * 60;
     const days = Math.floor(totalMinutes / (24 * 60));
-    const remainingMinutesAfterDays = totalMinutes % (24 * 60);
-    const hours = Math.floor(remainingMinutesAfterDays / 60);
-    const minutes = remainingMinutesAfterDays % 60;
-
-    return {
-      days: days,
-      hours: hours,
-      minutes: minutes
-    };
+    const remaining = totalMinutes % (24 * 60);
+    return { days, hours: Math.floor(remaining / 60), minutes: remaining % 60 };
   }
 
   /**
-   * Отображает маршруты в интерфейсе
-   * @param {Object} app - Ссылка на приложение для обработчиков
+   * Рендерит все трипы
    */
-  renderRoutes(app) {
+  renderAllTrips(app) {
     const timelineTrack = document.getElementById('timelineTrack');
-    if (!timelineTrack) {
-      console.error('Элемент timelineTrack не найден');
-      return;
-    }
-
+    if (!timelineTrack) return;
     timelineTrack.innerHTML = '';
 
-    // Показываем/скрываем кнопку добавления точки
-    const addPointBtn = document.getElementById('addPointBtn');
-    if (addPointBtn) {
-      addPointBtn.style.display = this.routes.length === 0 ? 'inline-flex' : 'none';
-    }
-
-    if (this.routes.length === 0) {
+    if (this.trips.length === 0) {
       timelineTrack.innerHTML = `
         <div style="text-align: center; color: #64748b; padding: 40px;">
           <i class="fas fa-map-marked-alt" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.3;"></i>
-          <p>Нет точек маршрута. Нажмите "Добавить точку", чтобы начать планирование.</p>
+          <p>Нет точек маршрута. Нажмите "Создать новый маршрут", чтобы начать планирование.</p>
         </div>
       `;
-      this.updateSummary();
       return;
     }
 
-    // Отображаем маршруты в порядке добавления (без сортировки)
-    this.routes.forEach((route, index) => {
-      // Добавляем карточку точки
-      const cardElement = this.createCheckpointCard(route, app, index);
-      timelineTrack.appendChild(cardElement);
+    this.trips.forEach((trip, tripIndex) => {
+      this.renderTrip(trip, app, tripIndex);
+    });
+  }
 
-      // Добавляем переход (кроме последней точки)
-      if (index < this.routes.length - 1) {
-        const nextRoute = this.routes[index + 1];
-        const transitionElement = this.createTransitionBlock(route, nextRoute, app);
-        timelineTrack.appendChild(transitionElement);
+  /**
+   * Рендерит один трип
+   */
+  renderTrip(trip, app, tripIndex) {
+    const timelineTrack = document.getElementById('timelineTrack');
+
+    // Контейнер трипа
+    const tripContainer = document.createElement('div');
+    tripContainer.className = 'trip-container';
+    tripContainer.dataset.tripId = trip.id;
+
+    // Название
+    const first = trip.routes[0]?.destination?.name || '';
+    const last = trip.routes[trip.routes.length - 1]?.destination?.name || '';
+    let autoTitle = '';
+    if (first && last && trip.routes.length > 1) {
+      autoTitle = `${first} — ${last}`;
+    } else if (first) {
+      autoTitle = first;
+    }
+
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'route-title-input';
+    titleDiv.innerHTML = autoTitle
+      ? `<span class="route-title-text">${autoTitle}</span>`
+      : `<input type="text" placeholder="Название маршрута..." />`;
+    tripContainer.appendChild(titleDiv);
+
+    // Сводка
+    const summaryDiv = document.createElement('div');
+    summaryDiv.className = 'route-summary';
+    summaryDiv.id = `summary-${trip.id}`;
+    tripContainer.appendChild(summaryDiv);
+
+    // Детали
+    const detailsDiv = document.createElement('div');
+    detailsDiv.className = 'route-details';
+    detailsDiv.id = `details-${trip.id}`;
+    tripContainer.appendChild(detailsDiv);
+
+    // Трек карточек
+    const trackDiv = document.createElement('div');
+    trackDiv.className = 'timeline-track';
+    trackDiv.id = `track-${trip.id}`;
+    tripContainer.appendChild(trackDiv);
+
+    timelineTrack.appendChild(tripContainer);
+
+    // Обновляем сводку и детали
+    this.updateTripSummary(trip, summaryDiv);
+    this.updateTripDetails(trip, detailsDiv);
+
+    // Автоопределяем типы точек
+    trip.routes.forEach((route, index) => {
+      if (!route.pointType) {
+        if (index === 0) route.pointType = 'start';
+        else if (index === trip.routes.length - 1) route.pointType = 'finish';
+        else route.pointType = 'normal';
       }
     });
 
-    this.updateSummary();
+    // Рендерим карточки
+    trip.routes.forEach((route, index) => {
+      const cardElement = this.createCheckpointCard(route, app, index, trip.id);
+      trackDiv.appendChild(cardElement);
+
+      if (index < trip.routes.length - 1) {
+        const nextRoute = trip.routes[index + 1];
+        const transitionElement = this.createTransitionBlock(route, nextRoute, app, trip.id);
+        trackDiv.appendChild(transitionElement);
+      }
+    });
   }
 
   /**
    * Создаёт карточку точки
-   * @param {Route} route - Маршрут
-   * @param {Object} app - Ссылка на приложение
-   * @param {number} index - Индекс маршрута в списке
-   * @returns {HTMLElement} Элемент карточки
    */
-  createCheckpointCard(route, app, index = 0) {
+  createCheckpointCard(route, app, index = 0, tripId = '') {
     const div = document.createElement('div');
     div.className = 'checkpoint-card';
-    if (route.priority === 'high') {
-      div.classList.add('pinned');
-    }
-
-    const formattedDate = route.dates.startDate ?
-      new Date(route.dates.startDate).toLocaleDateString('ru-RU', {
-        day: 'numeric', month: 'long'
-      }) :
-      'Дата не указана';
+    if (route.isLocked) div.classList.add('locked');
 
     const stayDuration = this.calculateStayDuration(
-      route.dates.startTime || '00:00',
-      route.dates.endTime || '00:00',
-      route.dates.startDate,
-      route.dates.endDate
+      route.dates.startTime || '00:00', route.dates.endTime || '00:00',
+      route.dates.startDate, route.dates.endDate
     );
 
     const arrivalTimeDisplay = route.dates.startTime || '--:--';
     const departureTimeDisplay = route.dates.endTime || '--:--';
 
-    // Формируем строку длительности с учётом дней
     let durationDisplay = '';
     if (stayDuration.days > 0) {
-      durationDisplay = `${stayDuration.days} д ${stayDuration.hours} ч ${stayDuration.minutes} м`;
+      durationDisplay = `${stayDuration.days} д ${stayDuration.hours} ч ${stayDuration.minutes} мин`;
     } else if (stayDuration.hours > 0) {
-      durationDisplay = `${stayDuration.hours} ч ${stayDuration.minutes} м`;
+      durationDisplay = `${stayDuration.hours} ч ${stayDuration.minutes} мин`;
     } else {
-      durationDisplay = `${stayDuration.minutes} м`;
+      durationDisplay = `${stayDuration.minutes} мин`;
     }
 
-    // Для первой карточки не показываем поле прибытия
-    const isFirstCard = index === 0;
+    const isStart = route.pointType === 'start';
+    const isFinish = route.pointType === 'finish';
 
     div.innerHTML = `
       <div class="checkpoint-time-sidebar">
-        ${!isFirstCard ? `
+        ${!isStart ? `
         <div class="time-badge arrival ${route.fixedField === 'arrival' ? 'fixed' : ''}">
           <span class="time-value">${arrivalTimeDisplay}</span>
           <span class="time-label">Прибытие</span>
         </div>
         ` : ''}
+        ${!isStart && !isFinish ? `
         <div class="time-badge duration ${route.fixedField === 'duration' ? 'fixed' : ''}">
           <span class="duration-value">${durationDisplay}</span>
           <span class="time-label">Пребывание</span>
         </div>
+        ` : ''}
+        ${!isFinish ? `
         <div class="time-badge departure ${route.fixedField === 'departure' ? 'fixed' : ''}">
           <span class="time-value">${departureTimeDisplay}</span>
           <span class="time-label">Отправление</span>
         </div>
+        ` : ''}
       </div>
       <div class="card-header">
         <div class="card-actions-left">
-          <button class="pin-btn ${route.priority === 'high' ? 'active' : ''}"
-            data-route-id="${route.id}" title="Закрепить">
-            <i class="fas fa-thumbtack"></i>
+          <button class="pin-btn ${route.isLocked ? 'active' : ''}"
+            data-route-id="${route.id}" data-trip-id="${tripId}" title="${route.isLocked ? 'Разблокировать' : 'Заблокировать'}">
+            <i class="fas fa-${route.isLocked ? 'lock' : 'lock-open'}"></i>
           </button>
         </div>
         <div class="card-actions-right">
-          <button class="delete-btn" data-route-id="${route.id}" title="Удалить">
+          <button class="delete-btn" data-route-id="${route.id}" data-trip-id="${tripId}" title="Удалить">
             <i class="fas fa-trash"></i>
           </button>
         </div>
@@ -303,9 +346,9 @@ export class RouteController {
         <div class="time-row">
           <label><i class="fas fa-map-marker-alt"></i> Название точки:</label>
           <input type="text" class="point-name-input-inline" value="${route.destination.name || ''}"
-            data-route-id="${route.id}" data-field="name" placeholder="Название места или адрес">
+            data-route-id="${route.id}" data-trip-id="${tripId}" data-field="name" placeholder="Название места или адрес" ${route.isLocked ? 'readonly' : ''}>
         </div>
-        ${!isFirstCard ? `
+        ${!isStart ? `
         <div class="time-row">
           <label class="clickable-label ${route.fixedField === 'arrival' ? 'fixed' : ''}"
             data-route-id="${route.id}" data-field="arrival">
@@ -313,20 +356,23 @@ export class RouteController {
           </label>
           <div style="display: flex; gap: 6px; flex: 1;">
             <input type="date" value="${route.dates.startDate || ''}"
-              data-route-id="${route.id}" data-field="startDate" style="flex: 1;">
+              data-route-id="${route.id}" data-trip-id="${tripId}" data-field="startDate" style="flex: 1;" ${route.isLocked ? 'readonly' : ''}>
             <input type="time" value="${route.dates.startTime || ''}"
-              data-route-id="${route.id}" data-field="startTime" style="flex: 1;">
+              data-route-id="${route.id}" data-trip-id="${tripId}" data-field="startTime" style="flex: 1;" ${route.isLocked ? 'readonly' : ''}>
           </div>
         </div>
         ` : ''}
+        ${!isStart && !isFinish ? `
         <div class="time-row">
           <label class="clickable-label ${route.fixedField === 'duration' ? 'fixed' : ''}"
             data-route-id="${route.id}" data-field="duration">
             <i class="fas fa-hourglass-half"></i> Длительность пребывания:
           </label>
           <input type="text" class="duration-input" value="${durationDisplay}"
-            data-route-id="${route.id}" data-field="duration" style="flex: 1;">
+            data-route-id="${route.id}" data-trip-id="${tripId}" data-field="duration" style="flex: 1;" ${route.isLocked ? 'readonly' : ''}>
         </div>
+        ` : ''}
+        ${!isFinish ? `
         <div class="time-row">
           <label class="clickable-label ${route.fixedField === 'departure' ? 'fixed' : ''}"
             data-route-id="${route.id}" data-field="departure">
@@ -334,67 +380,95 @@ export class RouteController {
           </label>
           <div style="display: flex; gap: 6px; flex: 1;">
             <input type="date" value="${route.dates.endDate || route.dates.startDate || ''}"
-              data-route-id="${route.id}" data-field="endDate">
+              data-route-id="${route.id}" data-trip-id="${tripId}" data-field="endDate" ${route.isLocked ? 'readonly' : ''}>
             <input type="time" value="${route.dates.endTime || ''}"
-              data-route-id="${route.id}" data-field="endTime" style="flex: 1;">
+              data-route-id="${route.id}" data-trip-id="${tripId}" data-field="endTime" style="flex: 1;" ${route.isLocked ? 'readonly' : ''}>
           </div>
         </div>
+        ` : ''}
       </div>
       <div class="notes-area">
-        <textarea placeholder="Заметки..." data-route-id="${route.id}" data-field="notes">${route.notes || route.details || ''}</textarea>
+        <textarea placeholder="Заметки..." data-route-id="${route.id}" data-trip-id="${tripId}" data-field="notes" ${route.isLocked ? 'readonly' : ''}>${route.notes || route.details || ''}</textarea>
       </div>
+      ${!isStart && !isFinish ? '' : `
+      <div class="point-type-toggle ${route.isLocked ? 'locked' : ''}">
+        <span class="point-type-label ${isStart ? 'active' : ''}" data-route-id="${route.id}" data-trip-id="${tripId}" data-type="start">
+          <i class="fas fa-play"></i> Стартовая
+        </span>
+        <span class="point-type-label ${isFinish ? 'active' : ''}" data-route-id="${route.id}" data-trip-id="${tripId}" data-type="finish">
+          <i class="fas fa-flag-checkered"></i> Финишная
+        </span>
+      </div>
+      `}
       <div class="add-point-buttons">
-        <button class="add-before-btn" data-route-id="${route.id}">
+        ${!isStart ? `
+        <button class="add-before-btn" data-route-id="${route.id}" data-trip-id="${tripId}">
           <i class="fas fa-plus"></i> Добавить точку перед этой
         </button>
-        <button class="add-after-btn" data-route-id="${route.id}">
+        ` : ''}
+        ${!isFinish ? `
+        <button class="add-after-btn" data-route-id="${route.id}" data-trip-id="${tripId}">
           <i class="fas fa-plus"></i> Добавить точку после этой
         </button>
+        ` : ''}
       </div>
     `;
 
     // Обработчики
     const deleteBtn = div.querySelector('.delete-btn');
     deleteBtn.addEventListener('click', () => {
-      if (confirm('Удалить эту точку?')) {
-        this.deleteRoute(route.id);
-        this.renderRoutes(app);
+      if (route.isLocked) {
+        this.showConfirmDialog('<strong>Карточка заблокирована</strong><br>Снимите блокировку для удаления', null);
+        return;
       }
+      this.showConfirmDialog('Удалить эту точку?', () => {
+        this.deleteRouteFromTrip(tripId, route.id);
+        this.renderAllTrips(app);
+      });
     });
 
     const pinBtn = div.querySelector('.pin-btn');
     pinBtn.addEventListener('click', () => {
-      const newPriority = route.priority === 'high' ? 'medium' : 'high';
-      this.updateRoute(route.id, { priority: newPriority });
-      this.renderRoutes(app);
+      route.isLocked = !route.isLocked;
+      this.updateRouteInTrip(tripId, route.id, { isLocked: route.isLocked });
+      this.renderAllTrips(app);
     });
 
     const addAfterBtn = div.querySelector('.add-after-btn');
-    addAfterBtn.addEventListener('click', () => {
-      app.addNewPoint(route.id, 'after');
-    });
+    if (addAfterBtn) {
+      addAfterBtn.addEventListener('click', () => {
+        app.addNewPoint(route.id, 'after', tripId);
+      });
+    }
 
     const addBeforeBtn = div.querySelector('.add-before-btn');
-    addBeforeBtn.addEventListener('click', () => {
-      app.addNewPoint(route.id, 'before');
-    });
+    if (addBeforeBtn) {
+      addBeforeBtn.addEventListener('click', () => {
+        app.addNewPoint(route.id, 'before', tripId);
+      });
+    }
 
-    // Закрепление полей (клик по label)
+    // Переключатель типа точки
+    const typeLabels = div.querySelectorAll('.point-type-label');
+    if (typeLabels.length > 0) {
+      typeLabels.forEach(label => {
+        label.addEventListener('click', () => {
+          const newType = label.dataset.type;
+          route.pointType = newType;
+          this.updateRouteInTrip(tripId, route.id, { pointType: newType });
+          this.renderAllTrips(app);
+        });
+      });
+    }
+
+    // Закрепление полей
     const clickableLabels = div.querySelectorAll('.clickable-label');
     clickableLabels.forEach(label => {
       label.addEventListener('click', () => {
         const field = label.dataset.field;
-        const currentRoute = this.getRouteById(route.id);
-        if (currentRoute) {
-          // Если кликнули на уже закреплённое поле — снимаем закрепление
-          if (currentRoute.fixedField === field) {
-            currentRoute.fixedField = null;
-          } else {
-            currentRoute.fixedField = field;
-          }
-          this.storageService.updateRoute(route.id, currentRoute);
-          this.renderRoutes(app);
-        }
+        route.fixedField = route.fixedField === field ? null : field;
+        this.updateRouteInTrip(tripId, route.id, { fixedField: route.fixedField });
+        this.renderAllTrips(app);
       });
     });
 
@@ -406,93 +480,58 @@ export class RouteController {
         const value = e.target.value;
 
         if (field) {
-          const currentRoute = this.getRouteById(route.id);
-          if (currentRoute) {
-            if (field === 'name') {
-              currentRoute.destination.name = value;
-              currentRoute.destination.address = value;
-              if (currentRoute.status === 'draft' && value.trim() !== '') {
-                currentRoute.status = 'planned';
-              }
-            } else if (field === 'startDate') {
-              currentRoute.dates.startDate = value;
-              // Если закреплено отправление, пересчитываем длительность
-              if (currentRoute.fixedField === 'departure') {
-                const arrivalDateTime = new Date(`${value}T${currentRoute.dates.startTime || '00:00'}`);
-                const departureDateTime = new Date(`${currentRoute.dates.endDate || value}T${currentRoute.dates.endTime || '00:00'}`);
-                const durationMinutes = Math.floor((departureDateTime - arrivalDateTime) / 60000);
-                // Сохраняем длительность, но не пересчитываем поля
-              }
-            } else if (field === 'endDate') {
-              currentRoute.dates.endDate = value || currentRoute.dates.startDate;
-              // Если закреплено прибытие, пересчитываем длительность
-              if (currentRoute.fixedField === 'arrival') {
-                const arrivalDateTime = new Date(`${currentRoute.dates.startDate}T${currentRoute.dates.startTime || '00:00'}`);
-                const departureDateTime = new Date(`${value}T${currentRoute.dates.endTime || '00:00'}`);
-                const durationMinutes = Math.floor((departureDateTime - arrivalDateTime) / 60000);
-                // Сохраняем длительность, но не пересчитываем поля
-              }
-            } else if (field === 'startTime') {
-              currentRoute.dates.startTime = value;
-              // Если закреплено отправление, пересчитываем длительность
-              if (currentRoute.fixedField === 'departure') {
-                const arrivalDateTime = new Date(`${currentRoute.dates.startDate}T${value}`);
-                const departureDateTime = new Date(`${currentRoute.dates.endDate || currentRoute.dates.startDate}T${currentRoute.dates.endTime || '00:00'}`);
-                const durationMinutes = Math.floor((departureDateTime - arrivalDateTime) / 60000);
-                // Сохраняем длительность, но не пересчитываем поля
-              }
-            } else if (field === 'endTime') {
-              currentRoute.dates.endTime = value;
-              // Если закреплено прибытие, пересчитываем длительность
-              if (currentRoute.fixedField === 'arrival') {
-                const arrivalDateTime = new Date(`${currentRoute.dates.startDate}T${currentRoute.dates.startTime}`);
-                const departureDateTime = new Date(`${currentRoute.dates.endDate || currentRoute.dates.startDate}T${value}`);
-                const durationMinutes = Math.floor((departureDateTime - arrivalDateTime) / 60000);
-                // Сохраняем длительность, но не пересчитываем поля
-              }
-            } else if (field === 'duration') {
-              // Парсим длительность пребывания
-              const durationMinutes = this.parseDurationString(value);
-              const now = new Date();
-              const today = now.toISOString().split('T')[0];
-
-              // Если закреплено прибытие — пересчитываем отправление
-              if (currentRoute.fixedField === 'arrival') {
-                const arrivalDateTime = new Date(`${currentRoute.dates.startDate || today}T${currentRoute.dates.startTime || '00:00'}`);
-                const departureDateTime = new Date(arrivalDateTime.getTime() + durationMinutes * 60000);
-                currentRoute.dates.endDate = departureDateTime.toISOString().split('T')[0];
-                currentRoute.dates.endTime = `${String(departureDateTime.getHours()).padStart(2, '0')}:${String(departureDateTime.getMinutes()).padStart(2, '0')}`;
-              }
-              // Если закреплено отправление — пересчитываем прибытие
-              else if (currentRoute.fixedField === 'departure') {
-                const departureDateTime = new Date(`${currentRoute.dates.endDate || today}T${currentRoute.dates.endTime || '00:00'}`);
-                const arrivalDateTime = new Date(departureDateTime.getTime() - durationMinutes * 60000);
-                currentRoute.dates.startDate = arrivalDateTime.toISOString().split('T')[0];
-                currentRoute.dates.startTime = `${String(arrivalDateTime.getHours()).padStart(2, '0')}:${String(arrivalDateTime.getMinutes()).padStart(2, '0')}`;
-              }
-              // Если ничего не закреплено — пересчитываем отправление (по умолчанию)
-              else {
-                const arrivalDateTime = new Date(`${currentRoute.dates.startDate || today}T${currentRoute.dates.startTime || '00:00'}`);
-                const departureDateTime = new Date(arrivalDateTime.getTime() + durationMinutes * 60000);
-                currentRoute.dates.endDate = departureDateTime.toISOString().split('T')[0];
-                currentRoute.dates.endTime = `${String(departureDateTime.getHours()).padStart(2, '0')}:${String(departureDateTime.getMinutes()).padStart(2, '0')}`;
-              }
-            } else if (field === 'notes') {
-              currentRoute.notes = value;
-              currentRoute.details = value;
+          if (field === 'name') {
+            route.destination.name = value;
+            route.destination.address = value;
+            if (route.status === 'draft' && value.trim() !== '') {
+              route.status = 'planned';
             }
-
-            this.storageService.updateRoute(route.id, currentRoute);
-
-            // Если изменили время отправления, обновляем следующую точку
-            if ((field === 'endTime' || field === 'endDate' || field === 'duration') && currentRoute.dates.endTime) {
-              this.updateNextPointArrival(route.id, currentRoute.dates.endDate || currentRoute.dates.startDate, currentRoute.dates.endTime, app);
+          } else if (field === 'startDate') {
+            if (route.pointType === 'start') { this.updateRouteInTrip(tripId, route.id, { dates: route.dates }); this.renderAllTrips(app); return; }
+            route.dates.startDate = value;
+          } else if (field === 'endDate') {
+            route.dates.endDate = value || route.dates.startDate;
+          } else if (field === 'startTime') {
+            if (route.pointType === 'start') { this.updateRouteInTrip(tripId, route.id, { dates: route.dates }); this.renderAllTrips(app); return; }
+            route.dates.startTime = value;
+          } else if (field === 'endTime') {
+            route.dates.endTime = value;
+          } else if (field === 'duration') {
+            if (route.pointType === 'start' || route.pointType === 'finish') return;
+            const durationMinutes = this.parseDurationString(value);
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            if (route.fixedField === 'arrival') {
+              const a = new Date(`${route.dates.startDate || today}T${route.dates.startTime || '00:00'}`);
+              const d = new Date(a.getTime() + durationMinutes * 60000);
+              route.dates.endDate = d.toISOString().split('T')[0];
+              route.dates.endTime = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            } else if (route.fixedField === 'departure') {
+              const d = new Date(`${route.dates.endDate || today}T${route.dates.endTime || '00:00'}`);
+              const a = new Date(d.getTime() - durationMinutes * 60000);
+              route.dates.startDate = a.toISOString().split('T')[0];
+              route.dates.startTime = `${String(a.getHours()).padStart(2, '0')}:${String(a.getMinutes()).padStart(2, '0')}`;
+            } else {
+              const a = new Date(`${route.dates.startDate || today}T${route.dates.startTime || '00:00'}`);
+              const d = new Date(a.getTime() + durationMinutes * 60000);
+              route.dates.endDate = d.toISOString().split('T')[0];
+              route.dates.endTime = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
             }
+          } else if (field === 'notes') {
+            route.notes = value;
+            route.details = value;
+          }
 
-            // Перерисовка для обновления отображения
-            if (field === 'startTime' || field === 'endTime' || field === 'startDate' || field === 'endDate' || field === 'duration') {
-              this.renderRoutes(app);
+          this.updateRouteInTrip(tripId, route.id, route.toJSON());
+
+          if ((field === 'endTime' || field === 'endDate' || field === 'duration') && route.dates.endTime) {
+            if (route.pointType !== 'finish') {
+              this.updateNextPointArrival(tripId, route.id, route.dates.endDate || route.dates.startDate, route.dates.endTime, app);
             }
+          }
+
+          if (field === 'startTime' || field === 'endTime' || field === 'startDate' || field === 'endDate' || field === 'duration') {
+            this.renderAllTrips(app);
           }
         }
       });
@@ -502,185 +541,248 @@ export class RouteController {
   }
 
   /**
-   * Обновляет время прибытия в следующей точке после изменения времени отправления
-   * @param {string} routeId - ID текущей точки
-   * @param {string} currentDate - Текущая дата
-   * @param {string} departureTime - Новое время отправления
-   * @param {Object} app - Ссылка на приложение для предупреждений
+   * Обновляет время прибытия следующей точки
    */
-  updateNextPointArrival(routeId, currentDate, departureTime, app) {
-    // Находим индекс текущей точки в массиве (без сортировки)
-    const currentIndex = this.routes.findIndex(r => r.id === routeId);
+  updateNextPointArrival(tripId, routeId, currentDate, departureTime, app) {
+    const trip = this.trips.find(t => t.id === tripId);
+    if (!trip) return;
 
-    if (currentIndex >= 0 && currentIndex < this.routes.length - 1) {
-      const nextRoute = this.routes[currentIndex + 1];
+    const currentIndex = trip.routes.findIndex(r => r.id === routeId);
+    if (currentIndex < 0 || currentIndex >= trip.routes.length - 1) return;
 
-      // Если время прибытия следующей точки закреплённое, не пересчитываем его
-      if (nextRoute.fixedField === 'arrival') {
-        // Проверяем, успеваем ли мы к закреплённому времени
-        const travelHours = nextRoute.travelDuration?.hours || 0;
-        const travelMinutes = nextRoute.travelDuration?.minutes || 0;
-        const totalTravelMinutes = travelHours * 60 + travelMinutes;
-
-        const departureDateTime = new Date(`${currentDate}T${departureTime}`);
-        const expectedArrivalDateTime = new Date(departureDateTime.getTime() + totalTravelMinutes * 60000);
-
-        const fixedArrivalDateTime = new Date(`${nextRoute.dates.startDate}T${nextRoute.dates.startTime}`);
-
-        if (expectedArrivalDateTime > fixedArrivalDateTime) {
-          // Показываем предупреждение
-          app.showArrivalWarning(nextRoute.destination.name, expectedArrivalDateTime, fixedArrivalDateTime);
-        }
-        return;
+    const nextRoute = trip.routes[currentIndex + 1];
+    if (nextRoute.fixedField === 'arrival') {
+      const travelMinutes = (nextRoute.travelDuration?.hours || 0) * 60 + (nextRoute.travelDuration?.minutes || 0);
+      const dep = new Date(`${currentDate}T${departureTime}`);
+      const expected = new Date(dep.getTime() + travelMinutes * 60000);
+      const fixed = new Date(`${nextRoute.dates.startDate}T${nextRoute.dates.startTime}`);
+      if (expected > fixed) {
+        app.showArrivalWarning(nextRoute.destination.name, expected, fixed);
       }
-
-      // Получаем длительность в пути до следующей точки
-      const travelHours = nextRoute.travelDuration?.hours || 0;
-      const travelMinutes = nextRoute.travelDuration?.minutes || 0;
-      const totalTravelMinutes = travelHours * 60 + travelMinutes;
-
-      // Создаём дату отправления из текущей точки
-      const departureDateTime = new Date(`${currentDate}T${departureTime}`);
-
-      // Прибавляем время в пути
-      const arrivalDateTime = new Date(departureDateTime.getTime() + totalTravelMinutes * 60000);
-
-      // Формируем новую дату и время прибытия
-      const newDate = arrivalDateTime.toISOString().split('T')[0];
-      const newTime = `${String(arrivalDateTime.getHours()).padStart(2, '0')}:${String(arrivalDateTime.getMinutes()).padStart(2, '0')}`;
-
-      // Обновляем следующую точку
-      nextRoute.dates.startDate = newDate;
-      nextRoute.dates.startTime = newTime;
-      this.storageService.updateRoute(nextRoute.id, nextRoute);
+      return;
     }
+
+    const travelMinutes = (nextRoute.travelDuration?.hours || 0) * 60 + (nextRoute.travelDuration?.minutes || 0);
+    const dep = new Date(`${currentDate}T${departureTime}`);
+    const arr = new Date(dep.getTime() + travelMinutes * 60000);
+    nextRoute.dates.startDate = arr.toISOString().split('T')[0];
+    nextRoute.dates.startTime = `${String(arr.getHours()).padStart(2, '0')}:${String(arr.getMinutes()).padStart(2, '0')}`;
+    this.storageService.updateTrip(tripId, trip);
   }
 
   /**
-   * Создаёт блок перехода между точками
-   * @param {Route} fromRoute - Откуда
-   * @param {Route} toRoute - Куда
-   * @param {Object} app - Ссылка на приложение
-   * @returns {HTMLElement} Элемент перехода
+   * Создаёт блок перехода
    */
-  createTransitionBlock(fromRoute, toRoute, app) {
+  createTransitionBlock(fromRoute, toRoute, app, tripId) {
     const div = document.createElement('div');
     div.className = 'transition-block';
 
-    // Рассчитываем длительность перехода
-    const fromDateTime = new Date(`${fromRoute.dates.endDate || fromRoute.dates.startDate}T${fromRoute.dates.endTime || '00:00'}`);
-    const toDateTime = new Date(`${toRoute.dates.startDate}T${toRoute.dates.startTime || '00:00'}`);
+    const from = new Date(`${fromRoute.dates.endDate || fromRoute.dates.startDate}T${fromRoute.dates.endTime || '00:00'}`);
+    const to = new Date(`${toRoute.dates.startDate}T${toRoute.dates.startTime || '00:00'}`);
+    let mins = Math.floor((to - from) / 60000);
+    if (mins < 0) mins += 24 * 60;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
 
-    let transitionMinutes = Math.floor((toDateTime - fromDateTime) / 60000);
-    if (transitionMinutes < 0) transitionMinutes += 24 * 60;
-
-    const transHours = Math.floor(transitionMinutes / 60);
-    const transMins = transitionMinutes % 60;
+    const transitionNote = toRoute.transitionNote || '';
 
     div.innerHTML = `
-      <div class="transition-arrow">
-        <i class="fas fa-arrow-down"></i>
-      </div>
-      <div class="transition-info">
-        <input type="text" class="transition-duration-input" value="${transHours}ч ${transMins}м"
-          data-from="${fromRoute.id}" data-to="${toRoute.id}" placeholder="1ч 30м">
+      <div class="transition-arrow"><i class="fas fa-arrow-down"></i></div>
+      <div class="transition-body">
+        <div class="transition-info">
+          <input type="text" class="transition-duration-input" value="${h}ч ${m}мин"
+            data-from="${fromRoute.id}" data-to="${toRoute.id}" data-trip-id="${tripId}" placeholder="43 или 1 43">
+        </div>
+        <div class="transition-time-btns">
+          <button type="button" class="time-btn time-btn-minus" data-add="-5" title="-5 минут">-5 мин</button>
+          <button type="button" class="time-btn time-btn-minus" data-add="-30" title="-30 минут">-30 мин</button>
+          <button type="button" class="time-btn" data-add="5" title="+5 минут">+5 мин</button>
+          <button type="button" class="time-btn" data-add="30" title="+30 минут">+30 мин</button>
+        </div>
+        <div class="transition-notes">
+          <textarea class="transition-note-input" placeholder="Заметка о переезде..."
+            data-trip-id="${tripId}" data-to="${toRoute.id}">${transitionNote}</textarea>
+          <div class="transition-emoji-btns">
+          <button type="button" class="emoji-btn" data-emoji="🚶" title="Пешком">🚶</button>
+          <button type="button" class="emoji-btn" data-emoji="🚇" title="Метро">🚇</button>
+          <button type="button" class="emoji-btn" data-emoji="🚌" title="Автобус">🚌</button>
+          <button type="button" class="emoji-btn" data-emoji="🚂" title="Поезд">🚂</button>
+          <button type="button" class="emoji-btn" data-emoji="✈️" title="Самолёт">✈️</button>
+          <button type="button" class="emoji-btn" data-emoji="🚗" title="Машина">🚗</button>
+          <button type="button" class="emoji-btn" data-emoji="🚕" title="Такси">🚕</button>
+          <button type="button" class="emoji-btn" data-emoji="🚁" title="Вертолёт">🚁</button>
+          <button type="button" class="emoji-btn" data-emoji="⛴️" title="Паром">⛴️</button>
+          <button type="button" class="emoji-btn" data-emoji="🏍️" title="Мотоцикл">🏍️</button>
+          </div>
+        </div>
       </div>
     `;
 
     const durationInput = div.querySelector('.transition-duration-input');
-    durationInput.addEventListener('change', (e) => {
-      const travelMinutes = app.parseDuration(e.target.value);
-      const travelHours = Math.floor(travelMinutes / 60);
-      const travelMins = travelMinutes % 60;
 
-      // Обновляем travelDuration в следующей точке (toRoute)
-      toRoute.travelDuration = {
-        hours: travelHours,
-        minutes: travelMins
-      };
+    const applyDuration = () => {
+      const totalMins = app.parseDuration(durationInput.value);
+      const tH = Math.floor(totalMins / 60);
+      const tM = totalMins % 60;
 
-      // Если время прибытия следующей точки не закреплённое, пересчитываем его
+      toRoute.travelDuration = { hours: tH, minutes: tM };
+
       if (toRoute.fixedField !== 'arrival') {
-        const fromDepartureDateTime = new Date(`${fromRoute.dates.endDate || fromRoute.dates.startDate}T${fromRoute.dates.endTime || '00:00'}`);
-        const arrivalDateTime = new Date(fromDepartureDateTime.getTime() + travelMinutes * 60000);
-        const arrivalDate = arrivalDateTime.toISOString().split('T')[0];
-        const arrivalH = String(arrivalDateTime.getHours()).padStart(2, '0');
-        const arrivalM = String(arrivalDateTime.getMinutes()).padStart(2, '0');
-
-        toRoute.dates.startDate = arrivalDate;
-        toRoute.dates.startTime = `${arrivalH}:${arrivalM}`;
+        const fromD = new Date(`${fromRoute.dates.endDate || fromRoute.dates.startDate}T${fromRoute.dates.endTime || '00:00'}`);
+        const arr = new Date(fromD.getTime() + totalMins * 60000);
+        toRoute.dates.startDate = arr.toISOString().split('T')[0];
+        toRoute.dates.startTime = `${String(arr.getHours()).padStart(2, '0')}:${String(arr.getMinutes()).padStart(2, '0')}`;
       } else {
-        // Если закреплённое, пересчитываем время отправления предыдущей точки
-        const toArrivalDateTime = new Date(`${toRoute.dates.startDate}T${toRoute.dates.startTime}`);
-        const departureDateTime = new Date(toArrivalDateTime.getTime() - travelMinutes * 60000);
-        const departureDate = departureDateTime.toISOString().split('T')[0];
-        const departureH = String(departureDateTime.getHours()).padStart(2, '0');
-        const departureM = String(departureDateTime.getMinutes()).padStart(2, '0');
-
-        fromRoute.dates.endDate = departureDate;
-        fromRoute.dates.endTime = `${departureH}:${departureM}`;
+        const toA = new Date(`${toRoute.dates.startDate}T${toRoute.dates.startTime}`);
+        const dep = new Date(toA.getTime() - totalMins * 60000);
+        fromRoute.dates.endDate = dep.toISOString().split('T')[0];
+        fromRoute.dates.endTime = `${String(dep.getHours()).padStart(2, '0')}:${String(dep.getMinutes()).padStart(2, '0')}`;
       }
 
-      this.storageService.updateRoute(toRoute.id, toRoute);
-      this.storageService.updateRoute(fromRoute.id, fromRoute);
-      this.renderRoutes(app);
+      this.storageService.updateTrip(tripId, { id: tripId, routes: [fromRoute.toJSON(), toRoute.toJSON()] });
+      this.renderAllTrips(app);
+    };
+
+    durationInput.addEventListener('change', applyDuration);
+
+    // Кнопки быстрого добавления времени
+    div.querySelectorAll('.time-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const addMins = parseInt(btn.dataset.add);
+        const currentMins = app.parseDuration(durationInput.value);
+        const newMins = Math.max(0, currentMins + addMins);
+        const nH = Math.floor(newMins / 60);
+        const nM = newMins % 60;
+        durationInput.value = `${nH}ч ${nM}мин`;
+        applyDuration();
+      });
+    });
+
+    // Кнопки эмодзи — вставляют в заметку
+    const noteInput = div.querySelector('.transition-note-input');
+    div.querySelectorAll('.emoji-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const emoji = btn.dataset.emoji;
+        const start = noteInput.selectionStart;
+        const end = noteInput.selectionEnd;
+        const before = noteInput.value.substring(0, start);
+        const after = noteInput.value.substring(end);
+        noteInput.value = before + emoji + after;
+        noteInput.focus();
+        noteInput.selectionStart = noteInput.selectionEnd = start + emoji.length;
+        // Сохраняем
+        saveTransitionNote();
+      });
+    });
+
+    // Сохранение заметки
+    const saveTransitionNote = () => {
+      const val = noteInput.value.trim();
+      toRoute.transitionNote = val;
+      const trip = this.trips.find(t => t.id === tripId);
+      if (trip) this.storageService.updateTrip(tripId, trip);
+    };
+
+    noteInput.addEventListener('input', saveTransitionNote);
+    noteInput.addEventListener('blur', saveTransitionNote);
+
+    // Раскрытие эмодзи при фокусе на поле заметки
+    const emojiBtns = div.querySelector('.transition-emoji-btns');
+    noteInput.addEventListener('focus', () => {
+      emojiBtns.classList.add('expanded');
+      // Позиционируем оверлей рядом с textarea
+      const rect = noteInput.getBoundingClientRect();
+      emojiBtns.style.left = rect.left + 'px';
+      emojiBtns.style.top = (rect.bottom + 4) + 'px';
+    });
+    noteInput.addEventListener('blur', () => {
+      // Небольшая задержка чтобы клики по эмодзи успевали сработать
+      setTimeout(() => {
+        emojiBtns.classList.remove('expanded');
+      }, 150);
     });
 
     return div;
   }
 
   /**
-   * Обновляет панель сводки
+   * Обновляет сводку трипа
    */
-  updateSummary() {
-    const summaryPanel = document.getElementById('summaryPanel');
-    if (!summaryPanel) return;
-
-    const totalPoints = this.routes.length;
-    
-    // Рассчитываем общую длительность
+  updateTripSummary(trip, summaryEl) {
+    const totalPoints = trip.routes.length;
     let totalMinutes = 0;
-    const sortedRoutes = [...this.routes].sort((a, b) => {
-      const dateA = new Date(`${a.dates.startDate}T${a.dates.startTime || '00:00'}`);
-      const dateB = new Date(`${b.dates.startDate}T${b.dates.startTime || '00:00'}`);
-      return dateA - dateB;
-    });
 
-    if (sortedRoutes.length > 0) {
-      const first = sortedRoutes[0];
-      const last = sortedRoutes[sortedRoutes.length - 1];
-
-      const firstDateTime = new Date(`${first.dates.startDate}T${first.dates.startTime || '00:00'}`);
-      const lastDateTime = new Date(`${last.dates.endDate || last.dates.startDate}T${last.dates.endTime || '00:00'}`);
-
-      totalMinutes = Math.floor((lastDateTime - firstDateTime) / 60000);
+    if (trip.routes.length > 0) {
+      const sorted = [...trip.routes].sort((a, b) => {
+        const dA = new Date(`${a.dates.startDate}T${a.dates.startTime || '00:00'}`);
+        const dB = new Date(`${b.dates.startDate}T${b.dates.startTime || '00:00'}`);
+        return dA - dB;
+      });
+      const first = sorted[0];
+      const last = sorted[sorted.length - 1];
+      const firstDT = new Date(`${first.dates.startDate}T${first.dates.startTime || '00:00'}`);
+      const lastDT = new Date(`${last.dates.endDate || last.dates.startDate}T${last.dates.endTime || '00:00'}`);
+      totalMinutes = Math.max(0, Math.floor((lastDT - firstDT) / 60000));
     }
 
-    const totalHours = Math.floor(totalMinutes / 60);
-    const totalDays = Math.floor(totalHours / 24);
-    const remainingHours = totalHours % 24;
-    const remainingMins = totalMinutes % 60;
-
-    let durationText = '—';
+    const h = Math.floor(totalMinutes / 60);
+    const d = Math.floor(h / 24);
+    const rh = h % 24;
+    const rm = totalMinutes % 60;
+    let dur = '—';
     if (totalMinutes > 0) {
-      if (totalDays > 0) {
-        durationText = `${totalDays} дн ${remainingHours}ч ${remainingMins}м`;
-      } else if (totalHours > 0) {
-        durationText = `${totalHours}ч ${remainingMins}м`;
-      } else {
-        durationText = `${remainingMins}м`;
-      }
+      if (d > 0) dur = `${d} дн ${rh}ч ${rm}м`;
+      else if (h > 0) dur = `${h}ч ${rm}м`;
+      else dur = `${rm}м`;
     }
 
-    summaryPanel.innerHTML = `
-      <span><i class="fas fa-route"></i> Общая длительность: ${durationText}</span>
+    summaryEl.innerHTML = `
+      <span><i class="fas fa-route"></i> Общая длительность: ${dur}</span>
       <span><i class="fas fa-location-dot"></i> Всего точек: ${totalPoints}</span>
     `;
   }
 
   /**
-   * Показывает сообщение об ошибке
-   * @param {string} message - Текст сообщения
+   * Обновляет детали трипа
+   */
+  updateTripDetails(trip, detailsEl) {
+    detailsEl.style.display = 'flex';
+
+    let dateRange = '—';
+    if (trip.routes.length > 0) {
+      const sorted = [...trip.routes].sort((a, b) => {
+        return new Date(`${a.dates.startDate}T${a.dates.startTime || '00:00'}`) - new Date(`${b.dates.startDate}T${b.dates.startTime || '00:00'}`);
+      });
+      const f = sorted[0].dates.startDate;
+      const l = sorted[sorted.length - 1].dates.endDate || sorted[sorted.length - 1].dates.startDate;
+      if (f && l) {
+        const opts = { day: 'numeric', month: 'short' };
+        const d1 = new Date(f).toLocaleDateString('ru-RU', opts);
+        const d2 = new Date(l).toLocaleDateString('ru-RU', opts);
+        dateRange = d1 === d2 ? d1 : `${d1} — ${d2}`;
+      }
+    }
+
+    const transfers = Math.max(0, trip.routes.length - 1);
+
+    let travelMins = 0;
+    trip.routes.forEach(r => { travelMins += (r.travelDuration?.hours || 0) * 60 + (r.travelDuration?.minutes || 0); });
+    const tH = Math.floor(travelMins / 60);
+    const tM = travelMins % 60;
+    const travelText = tH > 0 ? `${tH}ч ${tM}м` : `${tM}м`;
+
+    const locked = trip.routes.filter(r => r.isLocked).length;
+
+    detailsEl.innerHTML = `
+      <span class="detail-item"><i class="fas fa-calendar-alt"></i> ${dateRange}</span>
+      <span class="detail-item"><i class="fas fa-exchange-alt"></i> Переездов: ${transfers}</span>
+      <span class="detail-item"><i class="fas fa-car"></i> В пути: ${travelText}</span>
+      ${locked > 0 ? `<span class="detail-item"><i class="fas fa-lock"></i> Заблокировано: ${locked}</span>` : ''}
+    `;
+  }
+
+  /**
+   * Показывает ошибку
    */
   showErrorMessage(message) {
     this.showMessage(message, 'error');
@@ -688,48 +790,59 @@ export class RouteController {
 
   /**
    * Показывает сообщение
-   * @param {string} message - Текст сообщения
-   * @param {string} type - Тип сообщения
    */
   showMessage(message, type) {
-    let messageContainer = document.getElementById('message-container');
-    if (!messageContainer) {
-      messageContainer = document.createElement('div');
-      messageContainer.id = 'message-container';
-      messageContainer.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 2000;
-        max-width: 400px;
-      `;
-      document.body.appendChild(messageContainer);
+    let container = document.getElementById('message-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'message-container';
+      container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:2000;max-width:400px;';
+      document.body.appendChild(container);
     }
 
-    const messageEl = document.createElement('div');
-    messageEl.textContent = message;
-    messageEl.style.cssText = `
-      padding: 10px 15px;
-      margin-bottom: 10px;
-      border-radius: 4px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      opacity: 0;
-      transition: opacity 0.3s;
-      background: ${type === 'error' ? '#ffebee' : '#e8f5e8'};
-      color: ${type === 'error' ? '#c62828' : '#2e7d32'};
-      border-left: 4px solid ${type === 'error' ? '#c62828' : '#2e7d32'};
+    const el = document.createElement('div');
+    el.textContent = message;
+    el.style.cssText = `padding:10px 15px;margin-bottom:10px;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,0.1);opacity:0;transition:opacity 0.3s;background:${type === 'error' ? '#ffebee' : '#e8f5e8'};color:${type === 'error' ? '#c62828' : '#2e7d32'};border-left:4px solid ${type === 'error' ? '#c62828' : '#2e7d32'};`;
+    container.appendChild(el);
+    setTimeout(() => { el.style.opacity = '1'; }, 10);
+    setTimeout(() => {
+      el.style.opacity = '0';
+      setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 300);
+    }, 5000);
+  }
+
+  /**
+   * Показывает кастомный попап подтверждения
+   */
+  showConfirmDialog(message, onConfirm) {
+    const existing = document.querySelector('.confirm-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    const isInfo = onConfirm === null;
+
+    overlay.innerHTML = `
+      <div class="confirm-dialog">
+        <h3><i class="fas fa-${isInfo ? 'info-circle' : 'exclamation-triangle'}"></i> ${isInfo ? 'Внимание' : 'Удалить точку'}</h3>
+        <p>${message}</p>
+        <div class="confirm-actions">
+          <button class="btn-cancel" id="confirmCancel">${isInfo ? 'Понятно' : 'Нет'}</button>
+          ${!isInfo ? '<button class="btn-confirm" id="confirmYes">Да, удалить</button>' : ''}
+        </div>
+      </div>
     `;
 
-    messageContainer.appendChild(messageEl);
+    document.body.appendChild(overlay);
+    const close = () => { overlay.remove(); };
 
-    setTimeout(() => { messageEl.style.opacity = '1'; }, 10);
-    setTimeout(() => {
-      messageEl.style.opacity = '0';
-      setTimeout(() => {
-        if (messageEl.parentNode) {
-          messageEl.parentNode.removeChild(messageEl);
-        }
-      }, 300);
-    }, 5000);
+    document.getElementById('confirmCancel').addEventListener('click', close);
+    if (!isInfo) {
+      document.getElementById('confirmYes').addEventListener('click', () => { close(); onConfirm(); });
+    }
+
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    const handleKey = (e) => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', handleKey); } };
+    document.addEventListener('keydown', handleKey);
   }
 }

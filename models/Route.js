@@ -31,15 +31,24 @@ export class Route {
     this.notes = data.notes || '';
     this.details = data.details || '';
 
+    // Заметка о переезде к этой точке
+    this.transitionNote = data.transitionNote || '';
+
     // Флаг закреплённого времени прибытия
     this.isFixedTime = data.isFixedTime || false;
 
     // Закреплённое поле для пересчёта времени (arrival, duration, departure)
     this.fixedField = data.fixedField || null;
 
+    // Блокировка полей карточки (pin)
+    this.isLocked = data.isLocked || false;
+
     // Статус и приоритет
     this.status = data.status || 'planned';
     this.priority = data.priority || 'medium';
+
+    // Тип точки: 'start' — стартовая (нет прибытия), 'finish' — финишная (нет отправления)
+    this.pointType = data.pointType || 'normal';
   }
 
   /**
@@ -77,8 +86,11 @@ export class Route {
       travelDuration: this.travelDuration,
       notes: this.notes,
       details: this.details,
+      transitionNote: this.transitionNote,
       status: this.status,
       priority: this.priority,
+      pointType: this.pointType,
+      isLocked: this.isLocked,
       isFixedTime: this.isFixedTime,
       fixedField: this.fixedField
     };

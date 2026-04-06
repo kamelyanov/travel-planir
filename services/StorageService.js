@@ -1,87 +1,109 @@
 /**
- * Сервис для управления хранением данных
+ * Сервис для управления хранением данных (поддержка нескольких трипов)
  */
 export class StorageService {
-  constructor(storageKey = 'travel_routes') {
+  constructor(storageKey = 'travel_trips') {
     this.storageKey = storageKey;
   }
 
   /**
-   * Сохраняет маршруты в localStorage
-   * @param {Array} routes - Массив маршрутов
+   * Загружает все трипы из localStorage
+   * @returns {Array} Массив трипов
    */
-  saveRoutes(routes) {
+  loadTrips() {
     try {
-      // Преобразуем маршруты в JSON
-      const routesJSON = routes.map(route => route.toJSON());
-      localStorage.setItem(this.storageKey, JSON.stringify(routesJSON));
-      return true;
+      const data = localStorage.getItem(this.storageKey);
+      if (!data) return [];
+      return JSON.parse(data);
     } catch (error) {
-      console.error('Ошибка при сохранении маршрутов:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Загружает маршруты из localStorage
-   * @returns {Array} Массив маршрутов
-   */
-  loadRoutes() {
-    try {
-      const routesJSON = localStorage.getItem(this.storageKey);
-      if (!routesJSON) {
-        return [];
-      }
-      
-      const routesData = JSON.parse(routesJSON);
-      return routesData;
-    } catch (error) {
-      console.error('Ошибка при загрузке маршрутов:', error);
+      console.error('Ошибка при загрузке трипов:', error);
       return [];
     }
   }
 
   /**
-   * Добавляет новый маршрут
-   * @param {Object} route - Маршрут для добавления
-   * @returns {boolean} Успешно ли добавлен маршрут
+   * Сохраняет все трипы в localStorage
+   * @param {Array} trips - Массив трипов
    */
-  addRoute(route) {
-    const routes = this.loadRoutes();
-    routes.push(route.toJSON());
-    return this.saveRoutes(routes);
+  saveTrips(trips) {
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(trips));
+      return true;
+    } catch (error) {
+      console.error('Ошибка при сохранении трипов:', error);
+      return false;
+    }
   }
 
   /**
-   * Обновляет существующий маршрут
-   * @param {string} routeId - ID маршрута для обновления
-   * @param {Object} updatedRoute - Обновленный маршрут
-   * @returns {boolean} Успешно ли обновлен маршрут
+   * Добавляет новый трип
+   * @param {Object} trip - Трип для добавления
    */
-  updateRoute(routeId, updatedRoute) {
-    const routes = this.loadRoutes();
-    const index = routes.findIndex(route => route.id === routeId);
-    
+  addTrip(trip) {
+    const trips = this.loadTrips();
+    trips.push(trip.toJSON ? trip.toJSON() : trip);
+    return this.saveTrips(trips);
+  }
+
+  /**
+   * Обновляет трип по ID
+   * @param {string} tripId - ID трипа
+   * @param {Object} trip - Обновлённый трип
+   */
+  updateTrip(tripId, trip) {
+    const trips = this.loadTrips();
+    const index = trips.findIndex(t => t.id === tripId);
     if (index !== -1) {
-      routes[index] = updatedRoute.toJSON();
-      return this.saveRoutes(routes);
+      trips[index] = trip.toJSON ? trip.toJSON() : trip;
+      return this.saveTrips(trips);
     }
-    
     return false;
   }
 
   /**
-   * Удаляет маршрут по ID
-   * @param {string} routeId - ID маршрута для удаления
-   * @returns {boolean} Успешно ли удален маршрут
+   * Удаляет трип по ID
+   * @param {string} tripId - ID трипа для удаления
    */
-  deleteRoute(routeId) {
-    const routes = this.loadRoutes();
-    const filteredRoutes = routes.filter(route => route.id !== routeId);
-    
-    if (filteredRoutes.length !== routes.length) {
-      return this.saveRoutes(filteredRoutes);
+  deleteTrip(tripId) {
+    const trips = this.loadTrips();
+    const filtered = trips.filter(t => t.id !== tripId);
+    if (filtered.length !== trips.length) {
+      return this.saveTrips(filtered);
     }
     return false;
+  }
+
+  /**
+   * Очищает все данные
+   */
+  clearAll() {
+    try {
+      localStorage.removeItem(this.storageKey);
+      return true;
+    } catch (error) {
+      console.error('Ошибка при очистке:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Обратная совместимость: мигрирует старый формат в трипы
+   */
+  migrateOldData() {
+    const oldData = localStorage.getItem('travel_routes');
+    if (oldData) {
+      try {
+        const oldRoutes = JSON.parse(oldData);
+        if (oldRoutes && oldRoutes.length > 0) {
+          const tripData = { routes: oldRoutes };
+          this.addTrip(tripData);
+          localStorage.removeItem('travel_routes');
+          console.log('Миграция старых данных завершена');
+        }
+      } catch (e) {
+        console.error('Ошибка миграции:', e);
+        localStorage.removeItem('travel_routes');
+      }
+    }
   }
 }
