@@ -113,19 +113,6 @@ export class RouteController {
   }
 
   /**
-   * Парсит строку длительности в формате "ЧЧ:ММ"
-   * @param {string} durationStr - Строка длительности
-   * @returns {Object} Объект с часами и минутами
-   */
-  parseDuration(durationStr) {
-    const [hours, minutes] = durationStr.split(':').map(Number);
-    return {
-      hours: hours || 0,
-      minutes: minutes || 0
-    };
-  }
-
-  /**
    * Парсит строку длительности в минутах (форматы: "1ч 30м", "1:30", "90", "1 д 2ч 30м")
    * @param {string} durationStr - Строка длительности
    * @returns {number} Длительность в минутах

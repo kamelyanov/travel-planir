@@ -82,21 +82,6 @@ export class StorageService {
     if (filteredRoutes.length !== routes.length) {
       return this.saveRoutes(filteredRoutes);
     }
-    
     return false;
-  }
-
-  /**
-   * Очищает все маршруты
-   * @returns {boolean} Успешно ли очищены маршруты
-   */
-  clearAllRoutes() {
-    try {
-      localStorage.removeItem(this.storageKey);
-      return true;
-    } catch (error) {
-      console.error('Ошибка при очистке маршрутов:', error);
-      return false;
-    }
   }
 }
