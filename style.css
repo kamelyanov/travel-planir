@@ -844,6 +844,24 @@ input[readonly]:focus, textarea[readonly]:focus {
     background: #f8fafc;
 }
 
+/* Статус точки (надпись после нажатия кнопки) */
+.point-status-label {
+    display: block;
+    margin: 6px 8px 8px 8px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    border: 1px solid #86efac;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #16a34a;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
 .point-type-label {
     flex: 1;
     padding: 6px 12px;

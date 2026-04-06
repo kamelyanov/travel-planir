@@ -7,6 +7,9 @@ export class Route {
     this.id = data.id || this.generateId();
     this.title = data.title || '';
 
+    // Порядок создания (для определения последней созданной карточки)
+    this.creationOrder = data.creationOrder || Date.now();
+
     // Место назначения (используется только name)
     this.destination = {
       name: data.destination?.name || '',
@@ -81,6 +84,7 @@ export class Route {
     return {
       id: this.id,
       title: this.title,
+      creationOrder: this.creationOrder,
       destination: this.destination,
       dates: this.dates,
       travelDuration: this.travelDuration,

@@ -71,9 +71,6 @@ export class RouteController {
 
       const route = new Route(routeData);
 
-      // Определяем направление маршрута
-      const hasFinishRoute = trip.routes.some(r => r.pointType === 'finish');
-
       if (refRouteId) {
         const refIndex = trip.routes.findIndex(r => r.id === refRouteId);
         if (refIndex !== -1) {
@@ -226,7 +223,7 @@ export class RouteController {
     tripContainer.className = 'trip-container';
     tripContainer.dataset.tripId = trip.id;
 
-    // Название
+    // Название на основе ПЕРВОЙ и ПОСЛЕДНЕЙ карточки в массиве
     const first = trip.routes[0]?.destination?.name || '';
     const last = trip.routes[trip.routes.length - 1]?.destination?.name || '';
     let autoTitle = '';
@@ -267,25 +264,41 @@ export class RouteController {
     this.updateTripSummary(trip, summaryDiv);
     this.updateTripDetails(trip, detailsDiv);
 
-    // Автоопределяем типы точек
-    trip.routes.forEach((route, index) => {
-      if (!route.pointType) {
-        if (index === 0) route.pointType = 'start';
-        else if (index === trip.routes.length - 1) route.pointType = 'finish';
-        else route.pointType = 'normal';
-      }
-    });
+    // Проверяем, есть ли явно установленные стартовая/финишная точки
+    const hasExplicitStart = trip.routes.some(r => r.pointType === 'start');
+    const hasExplicitFinish = trip.routes.some(r => r.pointType === 'finish');
 
-    // Рендерим карточки
-    const hasFinishRoute = trip.routes.some(r => r.pointType === 'finish');
-    const isFirstStart = !hasFinishRoute;
-    trip.routes.forEach((route, index) => {
-      const isLast = index === trip.routes.length - 1;
-      const cardElement = this.createCheckpointCard(route, app, index, trip.id, isLast, trip.routes.length, isFirstStart);
+    // Находим ID точек с pointType start/finish
+    const startRouteId = trip.routes.find(r => r.pointType === 'start')?.id || null;
+    const finishRouteId = trip.routes.find(r => r.pointType === 'finish')?.id || null;
+
+    // Находим последнюю созданную ОБЫЧНУЮ карточку (по creationOrder)
+    const normalRoutes = trip.routes.filter(r => r.pointType !== 'start' && r.pointType !== 'finish');
+    const lastCreatedNormalRoute = normalRoutes.length > 0
+      ? normalRoutes.reduce((max, route) => route.creationOrder > max.creationOrder ? route : max, normalRoutes[0])
+      : null;
+    const lastCreatedRouteId = lastCreatedNormalRoute?.id || null;
+
+    // Рендерим карточки в порядке добавления в массив
+    trip.routes.forEach((route, displayIndex) => {
+      const isLast = displayIndex === trip.routes.length - 1;
+      const cardElement = this.createCheckpointCard(
+        route,
+        app,
+        displayIndex,
+        trip.id,
+        isLast,
+        trip.routes.length,
+        startRouteId,
+        finishRouteId,
+        hasExplicitStart,
+        hasExplicitFinish,
+        lastCreatedRouteId
+      );
       trackDiv.appendChild(cardElement);
 
-      if (index < trip.routes.length - 1) {
-        const nextRoute = trip.routes[index + 1];
+      if (displayIndex < trip.routes.length - 1) {
+        const nextRoute = trip.routes[displayIndex + 1];
         const transitionElement = this.createTransitionBlock(route, nextRoute, app, trip.id);
         trackDiv.appendChild(transitionElement);
       }
@@ -294,8 +307,19 @@ export class RouteController {
 
   /**
    * Создаёт карточку точки
+   * @param {Route} route - Модель маршрута
+   * @param {Object} app - Ссылка на приложение
+   * @param {number} displayIndex - Индекс отображения
+   * @param {string} tripId - ID трипа
+   * @param {boolean} isLast - Последняя ли в списке
+   * @param {number} routeCount - Общее количество маршрутов
+   * @param {string|null} startRouteId - ID стартовой точки
+   * @param {string|null} finishRouteId - ID финишной точки
+   * @param {boolean} hasExplicitStart - Есть ли явно установленная стартовая точка
+   * @param {boolean} hasExplicitFinish - Есть ли явно установленная финишная точка
+   * @param {string|null} lastCreatedRouteId - ID последней созданной обычной карточки
    */
-  createCheckpointCard(route, app, index = 0, tripId = '', isLast = false, routeCount = 0, isFirstStart = true) {
+  createCheckpointCard(route, app, displayIndex = 0, tripId = '', isLast = false, routeCount = 0, startRouteId = null, finishRouteId = null, hasExplicitStart = false, hasExplicitFinish = false, lastCreatedRouteId = null) {
     const div = document.createElement('div');
     div.className = 'checkpoint-card';
     if (route.isLocked) div.classList.add('locked');
@@ -317,8 +341,9 @@ export class RouteController {
       durationDisplay = `${stayDuration.minutes} мин`;
     }
 
-    const isStart = route.pointType === 'start';
-    const isFinish = route.pointType === 'finish';
+    // Определяем тип точки по ID, а не по индексу
+    const isStart = route.id === startRouteId;
+    const isFinish = route.id === finishRouteId;
 
     div.innerHTML = `
       <div class="checkpoint-time-sidebar">
@@ -402,8 +427,7 @@ export class RouteController {
       <div class="notes-area">
         <textarea placeholder="Заметки..." data-route-id="${route.id}" data-trip-id="${tripId}" data-field="notes" ${route.isLocked ? 'readonly' : ''}>${route.notes || route.details || ''}</textarea>
       </div>
-      ${!isStart && !isFinish ? '' : `
-      ${index === 0 || routeCount <= 1 ? `
+      ${routeCount === 1 && (isStart || isFinish) ? `
       <div class="point-type-toggle ${route.isLocked ? 'locked' : ''}">
         <span class="point-type-label ${isStart ? 'active' : ''}" data-route-id="${route.id}" data-trip-id="${tripId}" data-type="start">
           <i class="fas fa-play"></i> Стартовая
@@ -413,17 +437,43 @@ export class RouteController {
         </span>
       </div>
       ` : ''}
-      `}
       ${routeCount > 1 ? `
-      ${isFirstStart && isLast ? `
-      <button class="btn-set-status ${route.pointType === 'finish' ? 'active' : ''}" data-route-id="${route.id}" data-trip-id="${tripId}">
-        <i class="fas fa-flag-checkered"></i> ${route.pointType === 'finish' ? '✓ Финишная' : 'Сделать финишной'}
-      </button>
+      ${(() => {
+        const isNormalRoute = !isStart && !isFinish;
+        const hasFinish = finishRouteId !== null;
+        const hasStart = startRouteId !== null;
+        const isLastCreated = route.id === lastCreatedRouteId;
+        
+        // Кнопка только на ПОСЛЕДНЕЙ СОЗДАННОЙ обычной карточке
+        if (isNormalRoute && isLastCreated) {
+          // Если нет финишной и нет стартовой — показываем обе кнопки
+          if (!hasStart && !hasFinish) {
+            return `
+            <button class="btn-set-status" data-route-id="${route.id}" data-trip-id="${tripId}" data-action="start"><i class="fas fa-play"></i> Сделать стартовой</button>
+            <button class="btn-set-status" data-route-id="${route.id}" data-trip-id="${tripId}" data-action="finish"><i class="fas fa-flag-checkered"></i> Сделать финишной</button>
+            `;
+          }
+          // Если нет финишной → "Сделать финишной"
+          if (!hasFinish) {
+            return `<button class="btn-set-status" data-route-id="${route.id}" data-trip-id="${tripId}" data-action="finish"><i class="fas fa-flag-checkered"></i> Сделать финишной</button>`;
+          }
+          // Если нет стартовой → "Сделать стартовой"
+          if (!hasStart) {
+            return `<button class="btn-set-status" data-route-id="${route.id}" data-trip-id="${tripId}" data-action="start"><i class="fas fa-play"></i> Сделать стартовой</button>`;
+          }
+        }
+        
+        return '';
+      })()}
+      ${isStart ? `
+      <div class="point-status-label">
+        <i class="fas fa-play"></i> Стартовая точка маршрута
+      </div>
       ` : ''}
-      ${!isFirstStart && index === 0 && route.pointType !== 'finish' ? `
-      <button class="btn-set-status ${route.pointType === 'start' ? 'active' : ''}" data-route-id="${route.id}" data-trip-id="${tripId}">
-        <i class="fas fa-play"></i> ${route.pointType === 'start' ? '✓ Стартовая' : 'Сделать стартовой'}
-      </button>
+      ${isFinish ? `
+      <div class="point-status-label">
+        <i class="fas fa-flag-checkered"></i> Финишная точка маршрута
+      </div>
       ` : ''}
       ` : ''}
       <div class="add-point-buttons">
@@ -440,26 +490,33 @@ export class RouteController {
       </div>
     `;
 
-    // Кнопка "Сделать финишной/стартовой" на последней карточке
+    // Кнопка "Сделать финишной/стартовой"
     const setStatusBtn = div.querySelector('.btn-set-status');
     if (setStatusBtn) {
       setStatusBtn.addEventListener('click', () => {
         const trip = this.trips.find(t => t.id === tripId);
         if (!trip) return;
 
-        const hasFinishRoute = trip.routes.some(r => r.pointType === 'finish');
-        const isFirstStart = !hasFinishRoute;
-        const targetStatus = isFirstStart ? 'finish' : 'start';
-
-        // Снимаем целевой статус со всех кроме текущей
-        trip.routes.forEach(r => {
-          if (r.id !== route.id && r.pointType === targetStatus) {
-            r.pointType = 'normal';
-          }
-        });
-
-        // Переключаем текущую
-        route.pointType = route.pointType === targetStatus ? 'normal' : targetStatus;
+        const action = setStatusBtn.dataset.action;
+        
+        if (action === 'finish') {
+          // Делаем финишной (снимаем финишную со всех)
+          trip.routes.forEach(r => {
+            if (r.pointType === 'finish') {
+              r.pointType = 'normal';
+            }
+          });
+          route.pointType = 'finish';
+        } else if (action === 'start') {
+          // Делаем стартовой (снимаем стартовую со всех)
+          trip.routes.forEach(r => {
+            if (r.pointType === 'start') {
+              r.pointType = 'normal';
+            }
+          });
+          route.pointType = 'start';
+        }
+        
         this.storageService.updateTrip(tripId, trip);
         this.renderAllTrips(app);
       });
@@ -505,8 +562,23 @@ export class RouteController {
       typeLabels.forEach(label => {
         label.addEventListener('click', () => {
           const newType = label.dataset.type;
+          const tripIdx = this.trips.findIndex(t => t.id === tripId);
+          if (tripIdx === -1) return;
+          const trip = this.trips[tripIdx];
+
+          // Снимаем соответствующий статус со всех точек
+          trip.routes.forEach(r => {
+            if (newType === 'start' && r.pointType === 'start') {
+              r.pointType = 'normal';
+            }
+            if (newType === 'finish' && r.pointType === 'finish') {
+              r.pointType = 'normal';
+            }
+          });
+
+          // Устанавливаем новый тип
           route.pointType = newType;
-          this.updateRouteInTrip(tripId, route.id, { pointType: newType });
+          this.storageService.updateTrip(tripId, trip);
           this.renderAllTrips(app);
         });
       });
@@ -764,13 +836,8 @@ export class RouteController {
     let totalMinutes = 0;
 
     if (trip.routes.length > 0) {
-      const sorted = [...trip.routes].sort((a, b) => {
-        const dA = new Date(`${a.dates.startDate}T${a.dates.startTime || '00:00'}`);
-        const dB = new Date(`${b.dates.startDate}T${b.dates.startTime || '00:00'}`);
-        return dA - dB;
-      });
-      const first = sorted[0];
-      const last = sorted[sorted.length - 1];
+      const first = trip.routes[0];
+      const last = trip.routes[trip.routes.length - 1];
       const firstDT = new Date(`${first.dates.startDate}T${first.dates.startTime || '00:00'}`);
       const lastDT = new Date(`${last.dates.endDate || last.dates.startDate}T${last.dates.endTime || '00:00'}`);
       totalMinutes = Math.max(0, Math.floor((lastDT - firstDT) / 60000));
@@ -801,11 +868,8 @@ export class RouteController {
 
     let dateRange = '—';
     if (trip.routes.length > 0) {
-      const sorted = [...trip.routes].sort((a, b) => {
-        return new Date(`${a.dates.startDate}T${a.dates.startTime || '00:00'}`) - new Date(`${b.dates.startDate}T${b.dates.startTime || '00:00'}`);
-      });
-      const f = sorted[0].dates.startDate;
-      const l = sorted[sorted.length - 1].dates.endDate || sorted[sorted.length - 1].dates.startDate;
+      const f = trip.routes[0].dates.startDate;
+      const l = trip.routes[trip.routes.length - 1].dates.endDate || trip.routes[trip.routes.length - 1].dates.startDate;
       if (f && l) {
         const opts = { day: 'numeric', month: 'short' };
         const d1 = new Date(f).toLocaleDateString('ru-RU', opts);

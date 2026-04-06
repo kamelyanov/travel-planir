@@ -94,7 +94,9 @@ class TravelPlannerApp {
       const result = this.routeController.findRoute(referenceRouteId);
       if (result) {
         const refRoute = result.route;
+        
         if (position === 'after' && refRoute.dates.endTime && refRoute.dates.endDate) {
+          // Добавляем ПОСЛЕ: новая карточка начинается ПОСЛЕ опорной
           const refDep = new Date(`${refRoute.dates.endDate}T${refRoute.dates.endTime}`);
           const travelMin = 60;
           const arr = new Date(refDep.getTime() + travelMin * 60000);
@@ -105,6 +107,28 @@ class TravelPlannerApp {
           const depD = dep.toISOString().split('T')[0];
           const depH = String(dep.getHours()).padStart(2, '0');
           const depM = String(dep.getMinutes()).padStart(2, '0');
+
+          routeData = {
+            destination: { name: '', address: '' },
+            dates: { startDate: arrD, endDate: depD, startTime: `${arrH}:${arrM}`, endTime: `${depH}:${depM}` },
+            travelDuration: { hours: 1, minutes: 0 },
+            details: '', notes: '',
+            status: 'draft', priority: 'medium',
+            pointType: 'normal', isFixedTime: false, fixedField: null
+          };
+        } else if (position === 'before' && refRoute.dates.startTime && refRoute.dates.startDate) {
+          // Добавляем ПЕРЕД: новая карточка заканчивается ДО опорной
+          const refArr = new Date(`${refRoute.dates.startDate}T${refRoute.dates.startTime}`);
+          const travelMin = 60; // время в пути
+          const stayMin = 60;   // время пребывания
+          const dep = new Date(refArr.getTime() - travelMin * 60000);
+          const depD = dep.toISOString().split('T')[0];
+          const depH = String(dep.getHours()).padStart(2, '0');
+          const depM = String(dep.getMinutes()).padStart(2, '0');
+          const arr = new Date(dep.getTime() - stayMin * 60000);
+          const arrD = arr.toISOString().split('T')[0];
+          const arrH = String(arr.getHours()).padStart(2, '0');
+          const arrM = String(arr.getMinutes()).padStart(2, '0');
 
           routeData = {
             destination: { name: '', address: '' },
