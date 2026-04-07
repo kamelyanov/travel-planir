@@ -42,16 +42,11 @@ class TravelPlannerApp {
    * Создаёт новый трип с начальной точкой
    */
   createRoute() {
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const currentH = String(now.getHours()).padStart(2, '0');
-    const currentM = String(now.getMinutes()).padStart(2, '0');
-
     const routeData = {
       destination: { name: '', address: '' },
       dates: {
-        startDate: today, endDate: today,
-        startTime: `${currentH}:${currentM}`, endTime: `${currentH}:${currentM}`
+        startDate: '', endDate: '',
+        startTime: '', endTime: ''
       },
       travelDuration: { hours: 0, minutes: 0 },
       details: '', notes: '',
@@ -71,19 +66,14 @@ class TravelPlannerApp {
    */
   addNewPoint(referenceRouteId = null, position = 'after', tripId = null) {
     if (!tripId) {
-      // Если трип не указан — берём первый
       tripId = this.routeController.trips[0]?.id;
       if (!tripId) return;
     }
 
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const currentH = String(now.getHours()).padStart(2, '0');
-    const currentM = String(now.getMinutes()).padStart(2, '0');
-
+    // По умолчанию — пустые поля (пользователь заполнит сам)
     let routeData = {
       destination: { name: '', address: '' },
-      dates: { startDate: today, endDate: today, startTime: `${currentH}:${currentM}`, endTime: `${currentH}:${currentM}` },
+      dates: { startDate: '', endDate: '', startTime: '', endTime: '' },
       travelDuration: { hours: 0, minutes: 0 },
       details: '', notes: '',
       status: 'draft', priority: 'medium',
@@ -94,7 +84,7 @@ class TravelPlannerApp {
       const result = this.routeController.findRoute(referenceRouteId);
       if (result) {
         const refRoute = result.route;
-        
+
         if (position === 'after' && refRoute.dates.endTime && refRoute.dates.endDate) {
           // Добавляем ПОСЛЕ: новая карточка начинается ПОСЛЕ опорной
           const refDep = new Date(`${refRoute.dates.endDate}T${refRoute.dates.endTime}`);
@@ -119,8 +109,8 @@ class TravelPlannerApp {
         } else if (position === 'before' && refRoute.dates.startTime && refRoute.dates.startDate) {
           // Добавляем ПЕРЕД: новая карточка заканчивается ДО опорной
           const refArr = new Date(`${refRoute.dates.startDate}T${refRoute.dates.startTime}`);
-          const travelMin = 60; // время в пути
-          const stayMin = 60;   // время пребывания
+          const travelMin = 60;
+          const stayMin = 60;
           const dep = new Date(refArr.getTime() - travelMin * 60000);
           const depD = dep.toISOString().split('T')[0];
           const depH = String(dep.getHours()).padStart(2, '0');
@@ -139,6 +129,7 @@ class TravelPlannerApp {
             pointType: 'normal', isFixedTime: false, fixedField: []
           };
         }
+        // Если у опорной карточки пустые даты — оставляем пустыми (пользователь заполнит)
       }
     }
 

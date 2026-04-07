@@ -325,26 +325,34 @@ export class RouteController {
     if (route.isLocked) div.classList.add('locked');
 
     const stayDuration = this.calculateStayDuration(
-      route.dates.startTime || '00:00', route.dates.endTime || '00:00',
+      route.dates.startTime || '', route.dates.endTime || '',
       route.dates.startDate, route.dates.endDate
     );
 
     const arrivalTimeDisplay = route.dates.startTime || '--:--';
     const departureTimeDisplay = route.dates.endTime || '--:--';
 
-    let durationDisplay = '';
-    if (stayDuration.days > 0) {
-      durationDisplay = `${stayDuration.days} д ${stayDuration.hours} ч ${stayDuration.minutes} мин`;
-    } else if (stayDuration.hours > 0) {
-      durationDisplay = `${stayDuration.hours} ч ${stayDuration.minutes} мин`;
-    } else {
-      durationDisplay = `${stayDuration.minutes} мин`;
+    // Если даты/время пустые — показываем прочерк
+    let durationDisplay = '—';
+    if (route.dates.startTime && route.dates.endTime) {
+      if (stayDuration.days > 0) {
+        durationDisplay = `${stayDuration.days} д ${stayDuration.hours} ч ${stayDuration.minutes} мин`;
+      } else if (stayDuration.hours > 0) {
+        durationDisplay = `${stayDuration.hours} ч ${stayDuration.minutes} мин`;
+      } else {
+        durationDisplay = `${stayDuration.minutes} мин`;
+      }
     }
 
     // Определяем тип точки по ID, а не по индексу
     const isStart = route.id === startRouteId;
     const isFinish = route.id === finishRouteId;
     const isZeroDuration = !isStart && !isFinish && (stayDuration.hours === 0 && stayDuration.minutes === 0);
+
+    // Проверяем, заблокированы ли arrival и departure одновременно — duration нельзя менять
+    const isArrivalFixed = Array.isArray(route.fixedField) && route.fixedField.includes('arrival');
+    const isDepartureFixed = Array.isArray(route.fixedField) && route.fixedField.includes('departure');
+    const isDurationReadOnly = isArrivalFixed && isDepartureFixed;
 
     div.innerHTML = `
       <div class="checkpoint-time-sidebar">
@@ -406,15 +414,16 @@ export class RouteController {
           <label class="clickable-label ${Array.isArray(route.fixedField) && route.fixedField.includes('duration') ? 'fixed' : ''} ${isZeroDuration ? 'zero-duration' : ''}"
             data-route-id="${route.id}" data-field="duration">
             <i class="fas fa-hourglass-half"></i> Длительность пребывания:
-            ${Array.isArray(route.fixedField) && route.fixedField.includes('duration') ? '<i class="fas fa-lock lock-indicator" title="Заблокировать автоматическое изменение времени"></i>' : ''}
+            ${isDurationReadOnly ? '<i class="fas fa-ban lock-indicator" title="Нельзя изменить: прибытие и отправление закреплены"></i>' : ''}
+            ${!isDurationReadOnly && Array.isArray(route.fixedField) && route.fixedField.includes('duration') ? '<i class="fas fa-lock lock-indicator" title="Заблокировать автоматическое изменение времени"></i>' : ''}
           </label>
           <input type="text" class="duration-input" value="${durationDisplay}"
-            data-route-id="${route.id}" data-trip-id="${tripId}" data-field="duration" style="flex: 1;" ${route.isLocked ? 'readonly' : ''}>
+            data-route-id="${route.id}" data-trip-id="${tripId}" data-field="duration" style="flex: 1;" ${route.isLocked || isDurationReadOnly ? 'readonly' : ''}>
           <div class="duration-adjust-btns">
-            <button type="button" class="time-btn time-btn-minus" data-add="-5" title="-5 минут">-5 мин</button>
-            <button type="button" class="time-btn time-btn-minus" data-add="-30" title="-30 минут">-30 мин</button>
-            <button type="button" class="time-btn" data-add="5" title="+5 минут">+5 мин</button>
-            <button type="button" class="time-btn" data-add="30" title="+30 минут">+30 мин</button>
+            <button type="button" class="time-btn time-btn-minus" data-add="-5" title="-5 минут" ${isDurationReadOnly ? 'disabled' : ''}>-5 мин</button>
+            <button type="button" class="time-btn" data-add="5" title="+5 минут" ${isDurationReadOnly ? 'disabled' : ''}>+5 мин</button>
+            <button type="button" class="time-btn time-btn-minus" data-add="-30" title="-30 минут" ${isDurationReadOnly ? 'disabled' : ''}>-30 мин</button>
+            <button type="button" class="time-btn" data-add="30" title="+30 минут" ${isDurationReadOnly ? 'disabled' : ''}>+30 мин</button>
           </div>
         </div>
         ` : ''}
@@ -655,6 +664,9 @@ export class RouteController {
             route.dates.endTime = value;
           } else if (field === 'duration') {
             if (route.pointType === 'start' || route.pointType === 'finish') return;
+            // Если arrival и departure оба закреплены — duration нельзя менять
+            const bothTimeFixed = Array.isArray(route.fixedField) && route.fixedField.includes('arrival') && route.fixedField.includes('departure');
+            if (bothTimeFixed) return;
             const durationMinutes = this.parseDurationString(value);
             const now = new Date();
             const today = now.toISOString().split('T')[0];
@@ -709,6 +721,7 @@ export class RouteController {
     // Кнопки +/- для длительности
     div.querySelectorAll('.duration-adjust-btns .time-btn').forEach(btn => {
       btn.addEventListener('click', () => {
+        if (btn.disabled) return;
         const addMins = parseInt(btn.dataset.add);
         const currentMins = this.parseDurationString(div.querySelector('.duration-input').value);
         const newMins = Math.max(0, currentMins + addMins);
@@ -749,8 +762,26 @@ export class RouteController {
     const travelMinutes = (nextRoute.travelDuration?.hours || 0) * 60 + (nextRoute.travelDuration?.minutes || 0);
     const dep = new Date(`${currentDate}T${departureTime}`);
     const arr = new Date(dep.getTime() + travelMinutes * 60000);
+
+    // Если duration зафиксирован — запоминаем текущую длительность пребывания ДО изменения
+    const isDurationFixed = Array.isArray(nextRoute.fixedField) && nextRoute.fixedField.includes('duration');
+    let actualStayMins = 0;
+    if (isDurationFixed) {
+      const oldArrival = new Date(`${nextRoute.dates.startDate}T${nextRoute.dates.startTime}`);
+      const oldDeparture = new Date(`${nextRoute.dates.endDate || nextRoute.dates.startDate}T${nextRoute.dates.endTime || '00:00'}`);
+      actualStayMins = (oldDeparture - oldArrival) / 60000;
+    }
+
     nextRoute.dates.startDate = arr.toISOString().split('T')[0];
     nextRoute.dates.startTime = `${String(arr.getHours()).padStart(2, '0')}:${String(arr.getMinutes()).padStart(2, '0')}`;
+
+    // Если duration зафиксирован — сдвигаем departure вместе с arrival
+    if (isDurationFixed) {
+      const newDeparture = new Date(arr.getTime() + actualStayMins * 60000);
+      nextRoute.dates.endDate = newDeparture.toISOString().split('T')[0];
+      nextRoute.dates.endTime = `${String(newDeparture.getHours()).padStart(2, '0')}:${String(newDeparture.getMinutes()).padStart(2, '0')}`;
+    }
+
     this.storageService.updateTrip(tripId, trip);
   }
 
@@ -761,33 +792,52 @@ export class RouteController {
     const div = document.createElement('div');
     div.className = 'transition-block';
 
-    const from = new Date(`${fromRoute.dates.endDate || fromRoute.dates.startDate}T${fromRoute.dates.endTime || '00:00'}`);
-    const to = new Date(`${toRoute.dates.startDate}T${toRoute.dates.startTime || '00:00'}`);
-    let mins = Math.floor((to - from) / 60000);
-    if (mins < 0) mins += 24 * 60;
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
+    const fromDate = fromRoute.dates.endDate || fromRoute.dates.startDate;
+    const fromTime = fromRoute.dates.endTime || '00:00';
+    const toDate = toRoute.dates.startDate;
+    const toTime = toRoute.dates.startTime || '00:00';
+
+    let h, m;
+    if (fromDate && fromTime && toDate && toTime) {
+      const from = new Date(`${fromDate}T${fromTime}`);
+      const to = new Date(`${toDate}T${toTime}`);
+      let mins = Math.floor((to - from) / 60000);
+      if (mins < 0) mins += 24 * 60;
+      h = Math.floor(mins / 60);
+      m = mins % 60;
+    } else {
+      h = null; // пустые поля — покажем прочерк
+      m = null;
+    }
 
     const transitionNote = toRoute.transitionNote || '';
+    const fromName = fromRoute.destination.name || '';
+    const toName = toRoute.destination.name || '';
 
     div.innerHTML = `
-      <div class="transition-arrow"><i class="fas fa-arrow-down"></i></div>
       <div class="transition-body">
+        <div class="transition-route-names">
+          <span class="route-name-from">${fromName}</span>
+          <i class="fas fa-arrow-right transition-arrow-icon"></i>
+          <span class="route-name-to">${toName}</span>
+        </div>
         <div class="transition-info">
-          <input type="text" class="transition-duration-input" value="${h}ч ${m}мин"
-            data-from="${fromRoute.id}" data-to="${toRoute.id}" data-trip-id="${tripId}" placeholder="43 или 1 43">
+          <input type="text" class="transition-duration-input" value="${h !== null ? `${h}ч ${m}мин` : '—'}"
+            data-from="${fromRoute.id}" data-to="${toRoute.id}" data-trip-id="${tripId}" placeholder="43 или 1 43" ${h === null ? 'readonly' : ''}>
           <div class="transition-time-btns">
-            <button type="button" class="time-btn time-btn-minus" data-add="-5" title="-5 минут">-5 мин</button>
-            <button type="button" class="time-btn time-btn-minus" data-add="-30" title="-30 минут">-30 мин</button>
-            <button type="button" class="time-btn" data-add="5" title="+5 минут">+5 мин</button>
-            <button type="button" class="time-btn" data-add="30" title="+30 минут">+30 мин</button>
+            <button type="button" class="time-btn time-btn-minus" data-add="-5" title="-5 минут" ${h === null ? 'disabled' : ''}>-5 мин</button>
+            <button type="button" class="time-btn" data-add="5" title="+5 минут" ${h === null ? 'disabled' : ''}>+5 мин</button>
+            <button type="button" class="time-btn time-btn-minus" data-add="-30" title="-30 минут" ${h === null ? 'disabled' : ''}>-30 мин</button>
+            <button type="button" class="time-btn" data-add="30" title="+30 минут" ${h === null ? 'disabled' : ''}>+30 мин</button>
           </div>
         </div>
         <div class="transition-notes">
           <textarea class="transition-note-input" placeholder="Заметка о переезде..."
             data-trip-id="${tripId}" data-to="${toRoute.id}">${transitionNote}</textarea>
           <div class="emoji-dropdown-wrapper">
-            <button type="button" class="emoji-toggle" title="Выбрать транспорт">✈️</button>
+            <button type="button" class="emoji-toggle" title="Выбрать транспорт">
+              <i class="fas fa-circle"></i>
+            </button>
             <div class="emoji-dropdown" style="display:none;">
               <button type="button" class="emoji-btn" data-emoji="🚶" title="Пешком">🚶</button>
               <button type="button" class="emoji-btn" data-emoji="🚇" title="Метро">🚇</button>
@@ -808,6 +858,10 @@ export class RouteController {
     const durationInput = div.querySelector('.transition-duration-input');
 
     const applyDuration = () => {
+      // Если даты пустые — нечего считать
+      if (!fromRoute.dates.endDate && !fromRoute.dates.startDate) return;
+      if (!toRoute.dates.startDate) return;
+
       const totalMins = app.parseDuration(durationInput.value);
       const tH = Math.floor(totalMins / 60);
       const tM = totalMins % 60;
@@ -817,8 +871,25 @@ export class RouteController {
       if (!Array.isArray(toRoute.fixedField) || !toRoute.fixedField.includes('arrival')) {
         const fromD = new Date(`${fromRoute.dates.endDate || fromRoute.dates.startDate}T${fromRoute.dates.endTime || '00:00'}`);
         const arr = new Date(fromD.getTime() + totalMins * 60000);
+
+        // Если duration зафиксирован — запоминаем текущую длительность пребывания ДО изменения arrival
+        const isDurationFixed = Array.isArray(toRoute.fixedField) && toRoute.fixedField.includes('duration');
+        let actualStayMins = 0;
+        if (isDurationFixed) {
+          const oldArrival = new Date(`${toRoute.dates.startDate}T${toRoute.dates.startTime}`);
+          const oldDeparture = new Date(`${toRoute.dates.endDate || toRoute.dates.startDate}T${toRoute.dates.endTime || '00:00'}`);
+          actualStayMins = (oldDeparture - oldArrival) / 60000;
+        }
+
         toRoute.dates.startDate = arr.toISOString().split('T')[0];
         toRoute.dates.startTime = `${String(arr.getHours()).padStart(2, '0')}:${String(arr.getMinutes()).padStart(2, '0')}`;
+
+        // Если duration зафиксирован — сдвигаем departure вместе с arrival
+        if (isDurationFixed) {
+          const newDeparture = new Date(arr.getTime() + actualStayMins * 60000);
+          toRoute.dates.endDate = newDeparture.toISOString().split('T')[0];
+          toRoute.dates.endTime = `${String(newDeparture.getHours()).padStart(2, '0')}:${String(newDeparture.getMinutes()).padStart(2, '0')}`;
+        }
       } else {
         const toA = new Date(`${toRoute.dates.startDate}T${toRoute.dates.startTime}`);
         const dep = new Date(toA.getTime() - totalMins * 60000);
@@ -844,11 +915,15 @@ export class RouteController {
       this.renderAllTrips(app);
     };
 
-    durationInput.addEventListener('change', applyDuration);
+    durationInput.addEventListener('change', () => {
+      if (durationInput.readOnly) return;
+      applyDuration();
+    });
 
     // Кнопки быстрого добавления времени
     div.querySelectorAll('.time-btn').forEach(btn => {
       btn.addEventListener('click', () => {
+        if (btn.disabled) return;
         const addMins = parseInt(btn.dataset.add);
         const currentMins = app.parseDuration(durationInput.value);
         const newMins = Math.max(0, currentMins + addMins);
@@ -861,33 +936,6 @@ export class RouteController {
 
     // Кнопки эмодзи — вставляют в заметку
     const noteInput = div.querySelector('.transition-note-input');
-    div.querySelectorAll('.emoji-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const emoji = btn.dataset.emoji;
-        const start = noteInput.selectionStart;
-        const end = noteInput.selectionEnd;
-        const before = noteInput.value.substring(0, start);
-        const after = noteInput.value.substring(end);
-        noteInput.value = before + emoji + after;
-        noteInput.focus();
-        noteInput.selectionStart = noteInput.selectionEnd = start + emoji.length;
-        // Сохраняем
-        saveTransitionNote();
-      });
-    });
-
-    // Сохранение заметки
-    const saveTransitionNote = () => {
-      const val = noteInput.value.trim();
-      toRoute.transitionNote = val;
-      const trip = this.trips.find(t => t.id === tripId);
-      if (trip) this.storageService.updateTrip(tripId, trip);
-    };
-
-    noteInput.addEventListener('input', saveTransitionNote);
-    noteInput.addEventListener('blur', saveTransitionNote);
-
-    // Эмодзи — раскрытие по клику на toggle, вставка по клику на emoji
     const emojiToggle = div.querySelector('.emoji-toggle');
     const emojiDropdown = div.querySelector('.emoji-dropdown');
 
@@ -905,11 +953,23 @@ export class RouteController {
         const before = noteInput.value.substring(0, start);
         const after = noteInput.value.substring(end);
         noteInput.value = before + emoji + after;
+        noteInput.focus();
         noteInput.selectionStart = noteInput.selectionEnd = start + emoji.length;
         saveTransitionNote();
         emojiDropdown.style.display = 'none';
       });
     });
+
+    // Сохранение заметки
+    const saveTransitionNote = () => {
+      const val = noteInput.value.trim();
+      toRoute.transitionNote = val;
+      const trip = this.trips.find(t => t.id === tripId);
+      if (trip) this.storageService.updateTrip(tripId, trip);
+    };
+
+    noteInput.addEventListener('input', saveTransitionNote);
+    noteInput.addEventListener('blur', saveTransitionNote);
 
     // Закрытие dropdown при клике вне
     document.addEventListener('click', (e) => {
