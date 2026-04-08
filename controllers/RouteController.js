@@ -823,12 +823,12 @@ export class RouteController {
         </div>
         <div class="transition-info">
           <input type="text" class="transition-duration-input" value="${h !== null ? `${h}ч ${m}мин` : '—'}"
-            data-from="${fromRoute.id}" data-to="${toRoute.id}" data-trip-id="${tripId}" placeholder="43 или 1 43" ${h === null ? 'readonly' : ''}>
+            data-from="${fromRoute.id}" data-to="${toRoute.id}" data-trip-id="${tripId}" placeholder="43 или 1 43">
           <div class="transition-time-btns">
-            <button type="button" class="time-btn time-btn-minus" data-add="-5" title="-5 минут" ${h === null ? 'disabled' : ''}>-5 мин</button>
-            <button type="button" class="time-btn" data-add="5" title="+5 минут" ${h === null ? 'disabled' : ''}>+5 мин</button>
-            <button type="button" class="time-btn time-btn-minus" data-add="-30" title="-30 минут" ${h === null ? 'disabled' : ''}>-30 мин</button>
-            <button type="button" class="time-btn" data-add="30" title="+30 минут" ${h === null ? 'disabled' : ''}>+30 мин</button>
+            <button type="button" class="time-btn time-btn-minus" data-add="-5" title="-5 минут">-5 мин</button>
+            <button type="button" class="time-btn" data-add="5" title="+5 минут">+5 мин</button>
+            <button type="button" class="time-btn time-btn-minus" data-add="-30" title="-30 минут">-30 мин</button>
+            <button type="button" class="time-btn" data-add="30" title="+30 минут">+30 мин</button>
           </div>
         </div>
         <div class="transition-notes">
@@ -858,50 +858,62 @@ export class RouteController {
     const durationInput = div.querySelector('.transition-duration-input');
 
     const applyDuration = () => {
-      // Если даты пустые — нечего считать
-      if (!fromRoute.dates.endDate && !fromRoute.dates.startDate) return;
-      if (!toRoute.dates.startDate) return;
-
       const totalMins = app.parseDuration(durationInput.value);
+      console.log(`[TRAVEL] totalMins=${totalMins}, from="${fromRoute.destination.name}", to="${toRoute.destination.name}"`);
+      console.log(`[TRAVEL] fromRoute.endDate=${fromRoute.dates.endDate}, endTime=${fromRoute.dates.endTime}`);
+      console.log(`[TRAVEL] toRoute.startDate=${toRoute.dates.startDate}, startTime=${toRoute.dates.startTime}`);
       const tH = Math.floor(totalMins / 60);
       const tM = totalMins % 60;
 
+      // Сохраняем travelDuration даже если даты пустые
       toRoute.travelDuration = { hours: tH, minutes: tM };
 
-      if (!Array.isArray(toRoute.fixedField) || !toRoute.fixedField.includes('arrival')) {
-        const fromD = new Date(`${fromRoute.dates.endDate || fromRoute.dates.startDate}T${fromRoute.dates.endTime || '00:00'}`);
-        const arr = new Date(fromD.getTime() + totalMins * 60000);
+      // Если даты FROM пустые — сохраняем и выходим
+      if (!fromRoute.dates.endDate && !fromRoute.dates.startDate) {
+        console.warn('[TRAVEL] FROM даты пустые');
+        const trip = this.trips.find(t => t.id === tripId);
+        if (trip) this.storageService.updateTrip(tripId, trip);
+        return;
+      }
+      // Если даты TO пустые — сохраняем и выходим
+      if (!toRoute.dates.startDate) {
+        console.warn('[TRAVEL] TO даты пустые');
+        const trip = this.trips.find(t => t.id === tripId);
+        if (trip) this.storageService.updateTrip(tripId, trip);
+        return;
+      }
 
-        // Если duration зафиксирован — запоминаем текущую длительность пребывания ДО изменения arrival
+      const fromD = new Date(`${fromRoute.dates.endDate || fromRoute.dates.startDate}T${fromRoute.dates.endTime || '00:00'}`);
+      const arr = new Date(fromD.getTime() + totalMins * 60000);
+      console.log(`[TRAVEL] fromD=${fromD}, arr=${arr}, isValid=${!isNaN(arr.getTime())}`);
+
+      if (!Array.isArray(toRoute.fixedField) || !toRoute.fixedField.includes('arrival')) {
+        const newArrivalDate = arr.toISOString().split('T')[0];
+        const newArrivalTime = `${String(arr.getHours()).padStart(2, '0')}:${String(arr.getMinutes()).padStart(2, '0')}`;
+        console.log(`[TRAVEL] ЗАПИСЫВАЕМ arrival: ${newArrivalDate} ${newArrivalTime}`);
+        toRoute.dates.startDate = newArrivalDate;
+        toRoute.dates.startTime = newArrivalTime;
+
+        // Если duration зафиксирован — запоминаем текущую длительность пребывания
         const isDurationFixed = Array.isArray(toRoute.fixedField) && toRoute.fixedField.includes('duration');
-        let actualStayMins = 0;
         if (isDurationFixed) {
           const oldArrival = new Date(`${toRoute.dates.startDate}T${toRoute.dates.startTime}`);
           const oldDeparture = new Date(`${toRoute.dates.endDate || toRoute.dates.startDate}T${toRoute.dates.endTime || '00:00'}`);
-          actualStayMins = (oldDeparture - oldArrival) / 60000;
-        }
-
-        toRoute.dates.startDate = arr.toISOString().split('T')[0];
-        toRoute.dates.startTime = `${String(arr.getHours()).padStart(2, '0')}:${String(arr.getMinutes()).padStart(2, '0')}`;
-
-        // Если duration зафиксирован — сдвигаем departure вместе с arrival
-        if (isDurationFixed) {
+          const actualStayMins = (oldDeparture - oldArrival) / 60000;
           const newDeparture = new Date(arr.getTime() + actualStayMins * 60000);
           toRoute.dates.endDate = newDeparture.toISOString().split('T')[0];
           toRoute.dates.endTime = `${String(newDeparture.getHours()).padStart(2, '0')}:${String(newDeparture.getMinutes()).padStart(2, '0')}`;
         }
       } else {
+        console.warn('[TRAVEL] arrival закреплён');
         const toA = new Date(`${toRoute.dates.startDate}T${toRoute.dates.startTime}`);
         const dep = new Date(toA.getTime() - totalMins * 60000);
-        
-        // Проверяем, что новая длительность пребывания не отрицательная
+
         const fromArrival = new Date(`${fromRoute.dates.startDate || toRoute.dates.startDate}T${fromRoute.dates.startTime || '00:00'}`);
-        const newStayDuration = (dep - fromArrival) / 60000; // в минутах
-        
+        const newStayDuration = (dep - fromArrival) / 60000;
+
         if (newStayDuration < 0) {
-          // Длительность отрицательная — ставим 0 и показываем warning
           app.showZeroDurationWarning(fromRoute.destination.name || 'этой точке');
-          // departure = arrival (длительность = 0)
           fromRoute.dates.endDate = fromArrival.toISOString().split('T')[0];
           fromRoute.dates.endTime = `${String(fromArrival.getHours()).padStart(2, '0')}:${String(fromArrival.getMinutes()).padStart(2, '0')}`;
         } else {
@@ -911,7 +923,10 @@ export class RouteController {
         }
       }
 
-      this.storageService.updateTrip(tripId, { id: tripId, routes: [fromRoute.toJSON(), toRoute.toJSON()] });
+      console.log('[TRAVEL] сохраняем trip и рендерим');
+      const trip = this.trips.find(t => t.id === tripId);
+      console.log(`[TRAVEL] trip найден: ${!!trip}, routes: ${trip?.routes?.length}`);
+      if (trip) this.storageService.updateTrip(tripId, trip);
       this.renderAllTrips(app);
     };
 
@@ -923,7 +938,6 @@ export class RouteController {
     // Кнопки быстрого добавления времени
     div.querySelectorAll('.time-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        if (btn.disabled) return;
         const addMins = parseInt(btn.dataset.add);
         const currentMins = app.parseDuration(durationInput.value);
         const newMins = Math.max(0, currentMins + addMins);

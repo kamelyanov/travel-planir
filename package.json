@@ -1,13 +1,13 @@
 {
   "name": "travel-planner",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Приложение для планирования маршрутов путешествий",
-  "main": "src/main.js",
   "type": "module",
   "scripts": {
-    "start": "http-server -o",
-    "dev": "http-server -o -c-1",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
   },
   "keywords": [
     "travel",
@@ -17,7 +17,20 @@
   ],
   "author": "Travel Planner Team",
   "license": "MIT",
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.3",
+    "date-fns": "^4.1.0",
+    "framer-motion": "^11.15.0",
+    "lucide-react": "^0.469.0",
+    "nanoid": "^5.0.9"
+  },
   "devDependencies": {
-    "http-server": "^14.1.1"
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.5",
+    "tailwindcss": "^3.4.17",
+    "postcss": "^8.4.49",
+    "autoprefixer": "^10.4.20"
   }
 }

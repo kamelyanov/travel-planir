@@ -1,45 +1,16 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Travel Planner</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-</head>
-<body>
-    <div class="app-container">
-        <h1>
-            ✈️ Travel Planner
-            <small><i class="fas fa-map-signs"></i> планировщик маршрутов</small>
-        </h1>
-        <div class="sub">
-            <i class="fas fa-clock"></i> Планируйте маршрут, добавляя точки пребывания и переходы между ними.
-            Время прибытия = время отправления из предыдущей точки + длительность перехода.
-        </div>
-
-        <div class="timeline" id="timelineContainer">
-            <div class="route-summary" id="routeSummary">
-                <span><i class="fas fa-route"></i> Общая длительность: — </span>
-                <span><i class="fas fa-location-dot"></i> Всего точек: 0</span>
-            </div>
-            <div class="route-details" id="routeDetails"></div>
-            <div class="timeline-track" id="timelineTrack">
-                <!-- динамическая отрисовка карточек -->
-            </div>
-        </div>
-
-        <div class="global-add">
-            <button class="btn-primary" id="createRouteBtn"><i class="fas fa-plus-circle"></i> Создать новый маршрут</button>
-        </div>
-
-        <div class="summary" id="summaryPanel"></div>
-
-        <div class="reset-section">
-            <button class="btn-reset" id="resetRouteBtn"><i class="fas fa-trash-restore"></i> Сбросить маршрут</button>
-        </div>
-    </div>
-
-    <script type="module" src="src/main.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Travel Planner — Планировщик маршрутов</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
