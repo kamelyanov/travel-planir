@@ -73,10 +73,22 @@ export const CARD_THEMES = {
 export const TRANSPORT_TYPES = {
   walking: { icon: '🚶', name: 'Пешком' },
   bus: { icon: '🚌', name: 'Автобус' },
+  tram: { icon: '🚋', name: 'Трамвай' },
   train: { icon: '🚆', name: 'Поезд' },
+  metro: { icon: '🚇', name: 'Метро' },
+  taxi: { icon: '🚕', name: 'Такси' },
   flight: { icon: '✈️', name: 'Самолёт' },
   car: { icon: '🚗', name: 'Машина' },
 }
+
+/**
+ * Эмодзи для заметок
+ */
+export const TRANSITION_EMOJIS = [
+  '📍', '🏨', '🍽️', '☕', '🛒', '📸', '🎫', '💰',
+  '🗺️', '📌', '⚠️', '✅', '❌', '💡', '🕐', '🚶',
+  '🚕', '🚇', '🚌', '🚋', '🚆', '✈️', '🏖️', '🎭',
+]
 
 /**
  * Тип точки маршрута

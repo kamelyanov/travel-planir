@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
-import { Plus } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import { useTripStore } from '../../store/useTripStore'
+import { useModalStore } from '../../store/useModalStore'
 import { Timeline } from '../Timeline/Timeline'
 import { CheckpointCard } from '../Cards/CheckpointCard'
 import { TransitionCard } from '../Cards/TransitionCard'
@@ -19,11 +20,13 @@ export function TimelineView() {
     addRoute,
     updateRoute,
     deleteRoute,
+    deleteTrip,
     toggleRouteLock,
     setPointType,
     setRouteColorTheme,
     checkTimeConflicts,
   } = useTripStore()
+  const { showConfirm } = useModalStore()
 
   const activeTrip = trips.find(t => t.id === activeTripId)
   
@@ -39,6 +42,8 @@ export function TimelineView() {
   }
 
   const routes = activeTrip.routes || []
+  const hasStartRoute = routes.some(r => r.pointType === POINT_TYPES.start)
+  const hasFinishRoute = routes.some(r => r.pointType === POINT_TYPES.finish)
   const conflicts = checkTimeConflicts(activeTripId)
 
   const handleAddRoute = (refRouteId = null, position = 'after') => {
@@ -70,8 +75,29 @@ export function TimelineView() {
     setRouteColorTheme(tripId, routeId, colorTheme)
   }
 
+  const handleResetTrip = () => {
+    if (!activeTripId) return
+    showConfirm(
+      'Сбросить маршрут?',
+      'Это действие нельзя отменить. Все точки маршрута будут удалены.',
+      () => deleteTrip(activeTripId)
+    )
+  }
+
+  const handlePointTypeChange = (tripId, routeId, pointType) => {
+    setPointType(tripId, routeId, pointType)
+  }
+
+  const handleAddRouteBefore = (tripId, refRouteId) => {
+    addRoute(tripId, {}, refRouteId, 'before')
+  }
+
+  const handleAddRouteAfter = (tripId, refRouteId) => {
+    addRoute(tripId, {}, refRouteId, 'after')
+  }
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-1.5">
       {/* Предупреждение о конфликте */}
       {showWarning && (
         <div className="flex items-start gap-3 p-4 rounded-inner bg-ozon-card-red border border-ozon-badge-red">
@@ -87,7 +113,7 @@ export function TimelineView() {
               Запланированное время: {showWarning.fixedTime}
             </p>
           </div>
-          <button 
+          <button
             onClick={() => setShowWarning(null)}
             className="text-ozon-text-secondary hover:text-ozon-text-primary"
           >
@@ -96,8 +122,19 @@ export function TimelineView() {
         </div>
       )}
 
+      {/* Кнопка сброса маршрута */}
+      {routes.length > 0 && (
+        <button
+          onClick={handleResetTrip}
+          className="flex items-center gap-1 text-[11px] font-medium text-ozon-text-secondary hover:text-red-500 transition-colors ml-auto py-0.5"
+        >
+          <RotateCcw size={12} />
+          Сбросить маршрут
+        </button>
+      )}
+
       {/* Таймлайн + карточки */}
-      <div className="flex gap-3 md:gap-4">
+      <div className="flex gap-2 relative">
         {/* Левая колонка — таймлайн */}
         <Timeline 
           routes={routes} 
@@ -108,6 +145,7 @@ export function TimelineView() {
         <div className="flex-1 space-y-3 min-w-0">
           <AnimatePresence>
             {routes.map((route, index) => {
+              const isFirst = index === 0
               const isLast = index === routes.length - 1
               const hasConflict = conflicts.includes(route.id)
 
@@ -117,10 +155,16 @@ export function TimelineView() {
                   <CheckpointCard
                     route={route}
                     tripId={activeTripId}
+                    isFirst={isFirst}
                     isLast={isLast}
                     routeCount={routes.length}
+                    hasStartRoute={hasStartRoute}
+                    hasFinishRoute={hasFinishRoute}
                     onStartRoute={handleStartRoute}
                     onFinishRoute={handleFinishRoute}
+                    onPointTypeChange={handlePointTypeChange}
+                    onAddRouteBefore={handleAddRouteBefore}
+                    onAddRouteAfter={handleAddRouteAfter}
                     onDelete={handleDeleteRoute}
                     onToggleLock={handleToggleLock}
                     onUpdate={handleUpdateRoute}
@@ -136,16 +180,8 @@ export function TimelineView() {
                         toRoute={routes[index + 1]}
                         tripId={activeTripId}
                         onUpdate={handleUpdateRoute}
+                        isTravelDurationFixed={route.fixedField?.includes('travelDuration') || false}
                       />
-                      
-                      {/* Кнопка добавления точки между */}
-                      <button
-                        onClick={() => handleAddRoute(route.id, 'after')}
-                        className="w-full flex items-center justify-center gap-2 py-2 text-xs font-medium text-ozon-text-secondary hover:text-ozon-dot-white transition-colors"
-                      >
-                        <Plus size={14} />
-                        Добавить точку
-                      </button>
                     </>
                   )}
                 </div>
@@ -153,16 +189,6 @@ export function TimelineView() {
             })}
           </AnimatePresence>
 
-          {/* Кнопка добавления последней точки */}
-          {routes.length > 0 && (
-            <button
-              onClick={() => handleAddRoute()}
-              className="w-full ozon-btn-secondary mt-2"
-            >
-              <Plus size={16} />
-              Добавить точку в конец
-            </button>
-          )}
         </div>
       </div>
     </div>

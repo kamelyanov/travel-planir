@@ -1,37 +1,41 @@
 import { useTripStore } from './store/useTripStore'
 import { TripHeader } from './components/Trip/TripHeader'
 import { TimelineView } from './components/Trip/TimelineView'
+import { ModalDialog } from './components/ui/ModalDialog'
 
 function App() {
   const { trips } = useTripStore()
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Модальное окно */}
+      <ModalDialog />
+
       {/* Хедер */}
       <header className="border-b border-ozon-line">
-        <div className="max-w-[600px] mx-auto px-4 py-4">
-          <div className="flex items-center gap-3 mb-1">
-            <span className="text-2xl">✈️</span>
-            <h1 className="text-xl font-bold text-ozon-text-primary">
+        <div className="max-w-[600px] mx-auto px-4 py-2">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="text-xl">✈️🕐🚶⏱️</span>
+            <h1 className="text-lg font-bold text-ozon-text-primary">
               Travel Planner
             </h1>
           </div>
-          <p className="text-xs text-ozon-text-secondary pl-9">
-            Планируйте маршрут, добавляя точки пребывания и переходы между ними
+          <p className="text-[11px] text-ozon-text-secondary pl-8">
+            Планируйте маршрут, добавляя точки пребывания и переходы
           </p>
         </div>
       </header>
 
       {/* Основной контент */}
-      <main className="max-w-[600px] mx-auto px-4 py-6">
+      <main className="max-w-[600px] mx-auto px-4 py-3">
         <TripHeader />
         <TimelineView />
       </main>
 
       {/* Футер */}
-      <footer className="border-t border-ozon-line mt-8">
-        <div className="max-w-[600px] mx-auto px-4 py-4 text-center">
-          <p className="text-xs text-ozon-text-secondary">
+      <footer className="border-t border-ozon-line mt-4">
+        <div className="max-w-[600px] mx-auto px-4 py-2 text-center">
+          <p className="text-[10px] text-ozon-text-secondary">
             Travel Planner v2.0 • React + Tailwind CSS
           </p>
         </div>

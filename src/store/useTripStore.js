@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
+import { addMinutes, format } from 'date-fns'
 import { StorageService } from '../lib/storage'
-import { calculateStayDuration, hasTimeConflict } from '../utils/timeUtils'
+import { calculateStayDuration, hasTimeConflict, calculateDatesForNewRoute, cascadeRecalculate, cascadeRecalculateBackward, getTravelDurationMinutes, calculateTravelDuration, shouldCalculateTravelDuration, createDateTime } from '../utils/timeUtils'
 import { CARD_THEMES, POINT_TYPES } from '../constants/themes'
 
 const storage = new StorageService()
@@ -37,6 +38,7 @@ function createDefaultRoute(overrides = {}) {
     isFixedTime: false,
     fixedField: [],
     isLocked: false,
+    isNew: true, // по умолчанию новая — раскрыта
     colorTheme: 'white',
     transportType: 'walking',
     creationOrder: Date.now(),
@@ -131,7 +133,28 @@ export const useTripStore = create((set, get) => ({
     const trip = trips.find(t => t.id === tripId)
     if (!trip) return null
 
-    const newRoute = createDefaultRoute(routeData)
+    // Если есть опорная точка — рассчитываем время автоматически
+    let calculatedDates = null
+    if (refRouteId) {
+      const refRoute = trip.routes.find(r => r.id === refRouteId)
+      if (refRoute) {
+        calculatedDates = calculateDatesForNewRoute(refRoute, position)
+      }
+    }
+
+    const newRoute = createDefaultRoute({
+      ...routeData,
+      dates: calculatedDates || routeData.dates,
+      // Автоматически рассчитываем stayDuration
+      stayDuration: calculatedDates
+        ? calculateStayDuration(
+            calculatedDates.startDate,
+            calculatedDates.startTime,
+            calculatedDates.endDate,
+            calculatedDates.endTime
+          )
+        : (routeData.stayDuration || 60),
+    })
 
     let updatedRoutes
     if (refRouteId) {
@@ -145,12 +168,26 @@ export const useTripStore = create((set, get) => ({
           newRoute,
           ...trip.routes.slice(insertIndex),
         ]
+
+        // Каскадный пересчёт всех точек после новой
+        updatedRoutes = cascadeRecalculate(updatedRoutes, insertIndex)
       } else {
         updatedRoutes = [...trip.routes, newRoute]
       }
     } else {
-      // Добавляем в конец
+      // Добавляем в конец — рассчитываем время от последней точки
       newRoute.pointType = POINT_TYPES.normal
+      if (trip.routes.length > 0) {
+        const lastRoute = trip.routes[trip.routes.length - 1]
+        const lastDates = calculateDatesForNewRoute(lastRoute, 'after')
+        newRoute.dates = lastDates
+        newRoute.stayDuration = calculateStayDuration(
+          lastDates.startDate,
+          lastDates.startTime,
+          lastDates.endDate,
+          lastDates.endTime
+        )
+      }
       updatedRoutes = [...trip.routes, newRoute]
     }
 
@@ -166,28 +203,50 @@ export const useTripStore = create((set, get) => ({
   // Обновить маршрут
   updateRoute: (tripId, routeId, updates) => {
     const { trips } = get()
-    
+
     const updatedTrips = trips.map(trip => {
       if (trip.id !== tripId) return trip
 
-      const updatedRoutes = trip.routes.map(route => {
+      let updatedRoutes = trip.routes.map(route => {
         if (route.id !== routeId) return route
 
         const updatedRoute = { ...route, ...updates }
 
-        // Автоматический расчёт stayDuration
-        if (updates.dates || updates.notes === undefined) {
-          const dates = updates.dates || route.dates
+        // Автоматический расчёт stayDuration при изменении дат
+        if (updates.dates) {
+          const dates = updates.dates
           updatedRoute.stayDuration = calculateStayDuration(
-            dates.startDate,
-            dates.startTime,
-            dates.endDate,
-            dates.endTime
+            dates.startDate !== undefined ? dates.startDate : route.dates.startDate,
+            dates.startTime !== undefined ? dates.startTime : route.dates.startTime,
+            dates.endDate !== undefined ? dates.endDate : route.dates.endDate,
+            dates.endTime !== undefined ? dates.endTime : route.dates.endTime
           )
+        }
+
+        // Автоматический расчёт departure при изменении stayDuration + arrival
+        if (updates.stayDuration !== undefined && route.dates.startDate && route.dates.startTime) {
+          const arrival = createDateTime(route.dates.startDate, route.dates.startTime)
+          if (arrival) {
+            const newDeparture = addMinutes(arrival, updates.stayDuration)
+            updatedRoute.dates = {
+              ...route.dates,
+              endDate: format(newDeparture, 'yyyy-MM-dd'),
+              endTime: format(newDeparture, 'HH:mm'),
+            }
+          }
         }
 
         return updatedRoute
       })
+
+      // Каскадный пересчёт: находим индекс изменённого маршрута
+      const changedIndex = updatedRoutes.findIndex(r => r.id === routeId)
+      if (changedIndex >= 0) {
+        // Каскад НАЗАД (от изменённой к началу)
+        updatedRoutes = cascadeRecalculateBackward(updatedRoutes, changedIndex, updates)
+        // Каскад ВПЕРЁД (от изменённой к концу)
+        updatedRoutes = cascadeRecalculate(updatedRoutes, changedIndex, updates)
+      }
 
       return { ...trip, routes: updatedRoutes }
     })

@@ -35,15 +35,15 @@ export function TimelineItem({
     <div className="flex flex-col items-center">
       {/* Время прибытия */}
       {!isStart && (
-        <div className="text-right mb-1">
-          <div className="text-base font-medium text-ozon-text-primary">
+        <div className="text-right mb-0.5">
+          <div className="text-sm font-medium text-ozon-text-primary">
             {arrivalTime}
           </div>
         </div>
       )}
       
       {/* Точка */}
-      <div className="flex items-center py-2">
+      <div className="flex items-center py-1">
         <TimelineDot 
           theme={theme}
           isActive={isActive}
@@ -54,8 +54,8 @@ export function TimelineItem({
       
       {/* Время отправления */}
       {!isFinish && (
-        <div className="text-right mt-1">
-          <div className="text-xs text-ozon-text-secondary">
+        <div className="text-right mt-0.5">
+          <div className="text-[10px] text-ozon-text-secondary">
             {departureTime}
           </div>
         </div>

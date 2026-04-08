@@ -1,42 +1,65 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Lock, Unlock, Palette, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Lock, Unlock, Palette, Trash2, ChevronDown, ChevronUp, Play, Flag, MapPin, Plus } from 'lucide-react'
 import { CARD_THEMES, POINT_TYPES } from '../../constants/themes'
 import { formatDuration } from '../../utils/timeUtils'
 import { ColorPicker } from './ColorPicker'
+import { useModalStore } from '../../store/useModalStore'
 
 /**
  * Карточка точки маршрута
  */
-export function CheckpointCard({ 
+export function CheckpointCard({
   route,
   tripId,
+  isFirst = false,
   isLast = false,
   routeCount = 0,
+  hasStartRoute = false,
+  hasFinishRoute = false,
   onStartRoute,
   onFinishRoute,
   onDelete,
   onToggleLock,
   onUpdate,
   onColorThemeChange,
+  onPointTypeChange,
+  onAddRouteBefore,
+  onAddRouteAfter,
   hasConflict = false,
 }) {
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing, setIsEditing] = useState(route.isNew || false)
   const [showColorPicker, setShowColorPicker] = useState(false)
+  const { showConfirm, showAlert } = useModalStore()
+
+  // При первом рендере, если isNew — сбрасываем флаг
+  const hasInitialized = useRef(false)
+  useEffect(() => {
+    if (route.isNew && !hasInitialized.current) {
+      hasInitialized.current = true
+      onUpdate(tripId, route.id, { isNew: false })
+    }
+  }, [])
   
   const isStart = route.pointType === POINT_TYPES.start
   const isFinish = route.pointType === POINT_TYPES.finish
   const theme = hasConflict ? 'red' : (route.colorTheme || 'white')
   const themeConfig = CARD_THEMES[theme] || CARD_THEMES.white
-  
+
   const stayDuration = route.stayDuration || 0
   const durationDisplay = formatDuration(stayDuration)
-  
+
+  // Проверяем, какие поля зафиксированы
+  const isArrivalFixed = route.fixedField?.includes('arrival') || false
+  const isDepartureFixed = route.fixedField?.includes('departure') || false
+  const isDurationFixed = route.fixedField?.includes('duration') || false
+
   // Заголовок карточки
   const title = route.destination.name || (isStart ? 'Стартовая точка' : isFinish ? 'Финишная точка' : 'Новая точка')
   
   return (
     <motion.div
+      id={`checkpoint-${route.id}`}
       layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -50,40 +73,40 @@ export function CheckpointCard({
       }}
     >
       {/* Шапка карточки */}
-      <div 
-        className="flex items-center justify-between px-4 py-3 cursor-pointer"
+      <div
+        className="flex items-center justify-between px-3 py-2 cursor-pointer"
         onClick={() => setIsEditing(!isEditing)}
       >
         {/* Название точки */}
-        <h3 
-          className="text-lg font-semibold flex-1 truncate"
+        <h3
+          className="text-base font-semibold flex-1 truncate"
           style={{ color: '#1A1A1A' }}
         >
           {title}
         </h3>
-        
+
         {/* Бейдж длительности */}
         {!isStart && !isFinish && stayDuration > 0 && (
-          <div 
-            className="px-3 py-1 rounded-button text-xs font-medium mr-2"
+          <div
+            className="px-2 py-0.5 rounded-button text-[10px] font-medium mr-2"
             style={{ backgroundColor: themeConfig.badge }}
           >
             {durationDisplay}
           </div>
         )}
-        
+
         {/* Кнопки действий */}
         <div className="flex items-center gap-1">
           {/* Блокировка */}
           {route.isLocked && (
-            <Lock size={16} style={{ color: themeConfig.dot }} className="mr-1" />
+            <Lock size={12} style={{ color: themeConfig.dot }} className="mr-0.5" />
           )}
-          
+
           {/* Развернуть/свернуть */}
           {isEditing ? (
-            <ChevronUp size={18} className="text-ozon-text-secondary" />
+            <ChevronUp size={14} className="text-ozon-text-secondary" />
           ) : (
-            <ChevronDown size={18} className="text-ozon-text-secondary" />
+            <ChevronDown size={14} className="text-ozon-text-secondary" />
           )}
         </div>
       </div>
@@ -98,11 +121,110 @@ export function CheckpointCard({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-4 space-y-3 border-t" style={{ borderColor: themeConfig.cardDark }}>
-              
+            <div className="px-3 pb-3 space-y-2 border-t" style={{ borderColor: themeConfig.cardDark }}>
+
+              {/* Тогл типа точки */}
+              <div>
+                <label className="block text-[11px] font-medium text-ozon-text-secondary mb-1">
+                  Тип точки
+                </label>
+                <div className="flex rounded-inner overflow-hidden border" style={{ borderColor: themeConfig.cardDark }}>
+                  {isFirst ? (
+                    /* Первая карточка: Стартовая / Финишная */
+                    <>
+                      {(!hasStartRoute || isStart) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onPointTypeChange(tripId, route.id, POINT_TYPES.start)
+                          }}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all border-r`}
+                          style={{
+                            backgroundColor: isStart ? '#4CAF50' : 'transparent',
+                            borderColor: themeConfig.cardDark,
+                            color: isStart ? '#fff' : undefined,
+                          }}
+                        >
+                          <Play size={12} />
+                          Стартовая
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onPointTypeChange(tripId, route.id, isFinish ? POINT_TYPES.normal : POINT_TYPES.finish)
+                        }}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all ${
+                          isFinish ? 'text-white' : 'text-ozon-text-secondary'
+                        }`}
+                        style={{
+                          backgroundColor: isFinish ? '#F44336' : 'transparent',
+                        }}
+                      >
+                        <Flag size={12} />
+                        Финишная
+                      </button>
+                    </>
+                  ) : isLast ? (
+                    /* Последняя карточка: Промежуточная / Финишная */
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onPointTypeChange(tripId, route.id, POINT_TYPES.normal)
+                        }}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all ${
+                          !isStart && !isFinish ? 'text-white' : 'text-ozon-text-secondary'
+                        }`}
+                        style={{
+                          backgroundColor: (!isStart && !isFinish) ? '#005BFF' : 'transparent',
+                        }}
+                      >
+                        <MapPin size={12} />
+                        Промежуточная
+                      </button>
+                      {!hasFinishRoute || isFinish ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onPointTypeChange(tripId, route.id, isFinish ? POINT_TYPES.normal : POINT_TYPES.finish)
+                          }}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all border-l`}
+                          style={{
+                            backgroundColor: isFinish ? '#F44336' : 'transparent',
+                            borderColor: themeConfig.cardDark,
+                            color: isFinish ? '#fff' : undefined,
+                          }}
+                        >
+                          <Flag size={12} />
+                          Финишная
+                        </button>
+                      ) : null}
+                    </>
+                  ) : (
+                    /* Срединная карточка: только Промежуточная */
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onPointTypeChange(tripId, route.id, POINT_TYPES.normal)
+                      }}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all ${
+                        !isStart && !isFinish ? 'text-white' : 'text-ozon-text-secondary'
+                      }`}
+                      style={{
+                        backgroundColor: (!isStart && !isFinish) ? '#005BFF' : 'transparent',
+                      }}
+                    >
+                      <MapPin size={12} />
+                      Промежуточная
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* Название точки */}
               <div>
-                <label className="block text-xs font-medium text-ozon-text-secondary mb-1">
+                <label className="block text-[11px] font-medium text-ozon-text-secondary mb-1">
                   Название точки
                 </label>
                 <input
@@ -121,8 +243,8 @@ export function CheckpointCard({
               {!isStart && (
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-medium text-ozon-text-secondary mb-1">
-                      Дата прибытия
+                    <label className="block text-[11px] font-medium text-ozon-text-secondary mb-1">
+                      Дата прибытия {isArrivalFixed && '🔒'}
                     </label>
                     <input
                       type="date"
@@ -131,12 +253,12 @@ export function CheckpointCard({
                         dates: { ...route.dates, startDate: e.target.value }
                       })}
                       className="ozon-input"
-                      disabled={route.isLocked}
+                      disabled={route.isLocked || isArrivalFixed}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-ozon-text-secondary mb-1">
-                      Время прибытия
+                    <label className="block text-[11px] font-medium text-ozon-text-secondary mb-1">
+                      Время прибытия {isArrivalFixed && '🔒'}
                     </label>
                     <input
                       type="time"
@@ -145,37 +267,59 @@ export function CheckpointCard({
                         dates: { ...route.dates, startTime: e.target.value }
                       })}
                       className="ozon-input"
-                      disabled={route.isLocked}
+                      disabled={route.isLocked || isArrivalFixed}
                     />
                   </div>
                 </div>
               )}
-              
+
               {/* Длительность пребывания */}
               {!isStart && !isFinish && (
                 <div>
-                  <label className="block text-xs font-medium text-ozon-text-secondary mb-1">
-                    Длительность пребывания (минуты)
+                  <label className="block text-[11px] font-medium text-ozon-text-secondary mb-1">
+                    Длительность пребывания (минуты) {isDurationFixed && '🔒'}
                   </label>
-                  <input
-                    type="number"
-                    value={stayDuration}
-                    onChange={(e) => onUpdate(tripId, route.id, {
-                      stayDuration: parseInt(e.target.value) || 0
-                    })}
-                    className="ozon-input"
-                    disabled={route.isLocked}
-                    min="0"
-                  />
+                  <div className="flex gap-1.5 items-center">
+                    <input
+                      type="number"
+                      value={stayDuration}
+                      onChange={(e) => onUpdate(tripId, route.id, {
+                        stayDuration: parseInt(e.target.value) || 0
+                      })}
+                      className="ozon-input flex-1"
+                      disabled={route.isLocked || isDurationFixed}
+                      min="0"
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onUpdate(tripId, route.id, { stayDuration: Math.max(0, stayDuration - 15) })
+                      }}
+                      className="ozon-btn-ghost text-xs px-2 py-1"
+                      disabled={route.isLocked || isDurationFixed}
+                    >
+                      -15
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onUpdate(tripId, route.id, { stayDuration: stayDuration + 15 })
+                      }}
+                      className="ozon-btn-ghost text-xs px-2 py-1"
+                      disabled={route.isLocked || isDurationFixed}
+                    >
+                      +15
+                    </button>
+                  </div>
                 </div>
               )}
-              
+
               {/* Время отправления */}
               {!isFinish && (
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-medium text-ozon-text-secondary mb-1">
-                      Дата отправления
+                    <label className="block text-[11px] font-medium text-ozon-text-secondary mb-1">
+                      Дата отправления {isDepartureFixed && '🔒'}
                     </label>
                     <input
                       type="date"
@@ -184,12 +328,12 @@ export function CheckpointCard({
                         dates: { ...route.dates, endDate: e.target.value }
                       })}
                       className="ozon-input"
-                      disabled={route.isLocked}
+                      disabled={route.isLocked || isDepartureFixed}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-ozon-text-secondary mb-1">
-                      Время отправления
+                    <label className="block text-[11px] font-medium text-ozon-text-secondary mb-1">
+                      Время отправления {isDepartureFixed && '🔒'}
                     </label>
                     <input
                       type="time"
@@ -198,7 +342,7 @@ export function CheckpointCard({
                         dates: { ...route.dates, endTime: e.target.value }
                       })}
                       className="ozon-input"
-                      disabled={route.isLocked}
+                      disabled={route.isLocked || isDepartureFixed}
                     />
                   </div>
                 </div>
@@ -206,7 +350,7 @@ export function CheckpointCard({
               
               {/* Заметки */}
               <div>
-                <label className="block text-xs font-medium text-ozon-text-secondary mb-1">
+                <label className="block text-[11px] font-medium text-ozon-text-secondary mb-1">
                   Заметки
                 </label>
                 <textarea
@@ -229,10 +373,10 @@ export function CheckpointCard({
                     onToggleLock(tripId, route.id)
                   }}
                   className="ozon-btn-ghost"
-                  title={route.isLocked ? 'Разблокировать' : 'Заблокировать'}
+                  title={route.isLocked ? 'Разблокировать' : 'Заблокировать автоматические изменения'}
                 >
                   {route.isLocked ? <Lock size={16} /> : <Unlock size={16} />}
-                  <span className="hidden sm:inline">{route.isLocked ? 'Разблокировать' : 'Заблокировать'}</span>
+                  <span className="hidden sm:inline">{route.isLocked ? 'Разблокировать' : 'Зафиксировать'}</span>
                 </button>
                 
                 {/* Выбор цвета */}
@@ -248,13 +392,13 @@ export function CheckpointCard({
                   <span className="hidden sm:inline">Цвет</span>
                 </button>
                 
-                {/* Удалить */}
-                {!isStart && (
+                {/* Удалить — скрыта на самой первой карточке */}
+                {!isFirst && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
                       if (route.isLocked) {
-                        alert('Снимите блокировку для удаления')
+                        showAlert('Карточка заблокирована', 'Снимите блокировку для удаления')
                         return
                       }
                       onDelete(tripId, route.id)
@@ -265,30 +409,6 @@ export function CheckpointCard({
                     <Trash2 size={16} />
                     <span className="hidden sm:inline">Удалить</span>
                   </button>
-                )}
-                
-                {/* Сделать стартовой/финишной */}
-                {routeCount > 1 && !isStart && !isFinish && (
-                  <>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onStartRoute(tripId, route.id)
-                      }}
-                      className="ozon-btn-ghost text-xs"
-                    >
-                      Сделать стартовой
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onFinishRoute(tripId, route.id)
-                      }}
-                      className="ozon-btn-ghost text-xs"
-                    >
-                      Сделать финишной
-                    </button>
-                  </>
                 )}
               </div>
               
@@ -316,6 +436,34 @@ export function CheckpointCard({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Кнопки добавления точек */}
+      <div className="flex gap-1.5 px-2 pb-2">
+        {!isStart && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onAddRouteBefore(tripId, route.id)
+            }}
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-button text-[11px] font-medium transition-all bg-ozon-card-gray text-ozon-text-secondary hover:bg-ozon-badge-gray hover:text-ozon-text-primary"
+          >
+            <Plus size={12} />
+            Добавить точку перед этой
+          </button>
+        )}
+        {!isFinish && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onAddRouteAfter(tripId, route.id)
+            }}
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-button text-[11px] font-medium transition-all bg-ozon-card-gray text-ozon-text-secondary hover:bg-ozon-badge-gray hover:text-ozon-text-primary"
+          >
+            <Plus size={12} />
+            Добавить точку после этой
+          </button>
+        )}
+      </div>
     </motion.div>
   )
 }

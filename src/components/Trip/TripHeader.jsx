@@ -1,11 +1,13 @@
 import { Plus, Trash2 } from 'lucide-react'
 import { useTripStore } from '../../store/useTripStore'
+import { useModalStore } from '../../store/useModalStore'
 
 /**
  * Панель управления поездками
  */
 export function TripHeader() {
   const { trips, activeTripId, createTrip, deleteTrip, setActiveTrip, updateTripTitle } = useTripStore()
+  const { showConfirm } = useModalStore()
 
   const handleCreateTrip = () => {
     createTrip()
@@ -13,22 +15,24 @@ export function TripHeader() {
 
   const handleDeleteTrip = (tripId, e) => {
     e.stopPropagation()
-    if (confirm('Удалить эту поездку? Это действие нельзя отменить.')) {
-      deleteTrip(tripId)
-    }
+    showConfirm(
+      'Удалить поездку?',
+      'Это действие нельзя отменить. Все точки маршрута будут удалены.',
+      () => deleteTrip(tripId)
+    )
   }
 
   if (trips.length === 0) {
     return (
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-ozon-text-primary">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-base font-bold text-ozon-text-primary">
           Мои поездки
         </h2>
-        <button 
+        <button
           onClick={handleCreateTrip}
-          className="ozon-btn-primary"
+          className="ozon-btn-primary text-xs py-1.5 px-3"
         >
-          <Plus size={18} />
+          <Plus size={14} />
           <span className="hidden sm:inline">Создать поездку</span>
         </button>
       </div>
@@ -36,27 +40,27 @@ export function TripHeader() {
   }
 
   return (
-    <div className="mb-4">
+    <div className="mb-2">
       {/* Заголовок + кнопка создания */}
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xl font-bold text-ozon-text-primary">
+      <div className="flex items-center justify-between mb-1.5">
+        <h2 className="text-base font-bold text-ozon-text-primary">
           Мои поездки
         </h2>
-        <button 
+        <button
           onClick={handleCreateTrip}
-          className="ozon-btn-primary"
+          className="ozon-btn-primary text-xs py-1.5 px-3"
         >
-          <Plus size={18} />
+          <Plus size={14} />
           <span className="hidden sm:inline">Создать поездку</span>
         </button>
       </div>
 
       {/* Список поездок */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
+      <div className="flex gap-1.5 overflow-x-auto pb-1.5">
         {trips.map((trip) => {
           const isActive = trip.id === activeTripId
           const routeCount = trip.routes.length
-          
+
           // Автоматическое название на основе первой и последней точки
           const firstRoute = trip.routes[0]
           const lastRoute = trip.routes[trip.routes.length - 1]
@@ -71,10 +75,10 @@ export function TripHeader() {
               key={trip.id}
               onClick={() => setActiveTrip(trip.id)}
               className={`
-                flex items-center gap-2 px-4 py-2.5 rounded-inner cursor-pointer
-                transition-all duration-200 flex-shrink-0 min-w-[200px]
-                ${isActive 
-                  ? 'bg-ozon-dot-white text-white shadow-md' 
+                flex items-center gap-1.5 px-3 py-1.5 rounded-inner cursor-pointer
+                transition-all duration-200 flex-shrink-0 min-w-[180px]
+                ${isActive
+                  ? 'bg-ozon-dot-white text-white shadow-md'
                   : 'bg-ozon-card-gray text-ozon-text-primary hover:bg-ozon-badge-gray'
                 }
               `}
@@ -90,14 +94,14 @@ export function TripHeader() {
                     }
                   }}
                   className={`
-                    w-full bg-transparent border-none text-sm font-semibold truncate
+                    w-full bg-transparent border-none text-xs font-semibold truncate
                     focus:outline-none focus:ring-0 cursor-text
                     ${isActive ? 'text-white placeholder-white/70' : 'text-ozon-text-primary placeholder-ozon-text-secondary'}
                   `}
                   placeholder="Название поездки..."
                   onClick={(e) => e.stopPropagation()}
                 />
-                <div className={`text-xs ${isActive ? 'text-white/80' : 'text-ozon-text-secondary'}`}>
+                <div className={`text-[10px] ${isActive ? 'text-white/80' : 'text-ozon-text-secondary'}`}>
                   {routeCount} {routeCount === 1 ? 'точка' : routeCount < 5 ? 'точки' : 'точек'}
                 </div>
               </div>
@@ -106,15 +110,15 @@ export function TripHeader() {
               <button
                 onClick={(e) => handleDeleteTrip(trip.id, e)}
                 className={`
-                  p-1 rounded-button transition-all
-                  ${isActive 
-                    ? 'text-white/70 hover:text-white hover:bg-white/20' 
+                  p-0.5 rounded-button transition-all
+                  ${isActive
+                    ? 'text-white/70 hover:text-white hover:bg-white/20'
                     : 'text-ozon-text-secondary hover:text-red-500 hover:bg-red-50'
                   }
                 `}
                 title="Удалить поездку"
               >
-                <Trash2 size={14} />
+                <Trash2 size={12} />
               </button>
             </div>
           )
