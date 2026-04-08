@@ -6,6 +6,14 @@ import { CARD_THEMES, POINT_TYPES } from '../constants/themes'
 
 const storage = new StorageService()
 
+// Инициализируем поездки при создании store
+const initialTrips = storage.loadTrips()
+const hasOldData = initialTrips.length === 0
+
+// Пробуем мигровать старые данные
+const migratedTrips = hasOldData ? storage.migrateOldData() : null
+const tripsData = migratedTrips || initialTrips
+
 /**
  * Создаёт маршрут по умолчанию
  */
@@ -54,25 +62,8 @@ function createDefaultTrip(overrides = {}) {
  */
 export const useTripStore = create((set, get) => ({
   // Состояние
-  trips: [],
-  activeTripId: null,
-  isInitialized: false,
-
-  // Инициализация
-  initialize: () => {
-    // Пробуем мигровать старые данные
-    const migratedTrips = storage.migrateOldData()
-    
-    // Загружаем поездки
-    const tripsData = storage.loadTrips()
-    const trips = migratedTrips || tripsData
-    
-    set({
-      trips,
-      activeTripId: trips.length > 0 ? trips[0].id : null,
-      isInitialized: true,
-    })
-  },
+  trips: tripsData,
+  activeTripId: tripsData.length > 0 ? tripsData[0].id : null,
 
   // Получить активную поездку
   getActiveTrip: () => {

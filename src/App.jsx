@@ -1,25 +1,9 @@
-import { useEffect } from 'react'
 import { useTripStore } from './store/useTripStore'
 import { TripHeader } from './components/Trip/TripHeader'
 import { TimelineView } from './components/Trip/TimelineView'
 
 function App() {
-  const { initialize, isInitialized } = useTripStore()
-
-  useEffect(() => {
-    initialize()
-  }, [initialize])
-
-  if (!isInitialized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <div className="text-4xl mb-2">✈️</div>
-          <p className="text-ozon-text-secondary text-sm">Загрузка...</p>
-        </div>
-      </div>
-    )
-  }
+  const { trips } = useTripStore()
 
   return (
     <div className="min-h-screen bg-white">
