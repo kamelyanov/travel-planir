@@ -1,8 +1,20 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, ChevronUp, Lock, Smile } from 'lucide-react'
 import { TRANSPORT_TYPES, TRANSITION_EMOJIS } from '../../constants/themes'
 import { formatDuration } from '../../utils/timeUtils'
+
+// Цвета для градиентной полоски в зависимости от типа транспорта
+const TRANSPORT_GRADIENTS = {
+  walking: 'linear-gradient(180deg, #8E8E93 0%, #636366 100%)',
+  bus: 'linear-gradient(180deg, #FF9500 0%, #FF6B00 100%)',
+  tram: 'linear-gradient(180deg, #FF3B30 0%, #FF2D55 100%)',
+  train: 'linear-gradient(180deg, #5856D6 0%, #AF52DE 100%)',
+  metro: 'linear-gradient(180deg, #FF2D55 0%, #FF375F 100%)',
+  taxi: 'linear-gradient(180deg, #FFCC00 0%, #FF9F0A 100%)',
+  flight: 'linear-gradient(180deg, #007AFF 0%, #5856D6 100%)',
+  car: 'linear-gradient(180deg, #34C759 0%, #30D158 100%)',
+}
 
 /**
  * Карточка переезда между точками
@@ -13,9 +25,18 @@ export function TransitionCard({
   tripId,
   onUpdate,
   isTravelDurationFixed = false,
+  isCollapsed = false,
+  onToggleCollapse = () => {},
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [showEmojis, setShowEmojis] = useState(false)
+
+  // Синхронизируем локальное состояние с глобальным collapsedRoutes
+  useEffect(() => {
+    if (isCollapsed && isEditing) {
+      setIsEditing(false)
+    }
+  }, [isCollapsed])
 
   const transport = TRANSPORT_TYPES[fromRoute.transportType || 'walking'] || TRANSPORT_TYPES.walking
   const duration = typeof fromRoute.travelDuration === 'number'
@@ -23,6 +44,7 @@ export function TransitionCard({
     : (fromRoute.travelDuration?.hours || 0) * 60 + (fromRoute.travelDuration?.minutes || 0)
 
   const notes = fromRoute.details || ''
+  const gradientColor = TRANSPORT_GRADIENTS[fromRoute.transportType || 'walking'] || TRANSPORT_GRADIENTS.walking
 
   return (
     <motion.div
@@ -31,19 +53,51 @@ export function TransitionCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, height: 0 }}
       transition={{ duration: 0.2 }}
-      className="w-full"
-      style={{
-        backgroundColor: '#FFFFFF',
-        borderRadius: '12px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-        minHeight: '40px',
-      }}
+      className="w-full flex gap-0"
     >
-      {/* Основной контент: Время в пути + инпут */}
-      <div 
-        className="flex items-center gap-2 px-3 py-2 cursor-pointer"
-        onClick={() => setIsEditing(!isEditing)}
+      {/* Градиентная полоска слева */}
+      <div
+        className="w-1 rounded-l-inner flex-shrink-0"
+        style={{ background: gradientColor }}
+      />
+      
+      {/* Основной контейнер карточки */}
+      <motion.div
+        layout
+        className="flex-1 rounded-r-inner"
+        style={{
+          backgroundColor: '#FAFAFA',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
+        }}
       >
+      {isCollapsed ? (
+        /* Свёрнутый вид — только заголовок */
+        <div
+          className="flex items-center gap-2 px-3 py-2 cursor-pointer"
+          onClick={onToggleCollapse}
+        >
+          <div
+            className="w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0"
+            style={{ backgroundColor: '#F5F5F7' }}
+            title={transport.name}
+          >
+            {transport.icon}
+          </div>
+          <span className="text-[11px] font-medium text-ozon-text-secondary flex-shrink-0 whitespace-nowrap">
+            Время в пути:
+          </span>
+          <span className="text-[12px] font-semibold text-ozon-text-primary">
+            {duration} мин
+          </span>
+          <ChevronDown size={14} className="ml-auto text-ozon-text-secondary" />
+        </div>
+      ) : (
+        <>
+        {/* Основной контент: Время в пути + инпут */}
+        <div
+          className="flex items-center gap-2 px-3 py-2 cursor-pointer"
+          onClick={() => setIsEditing(!isEditing)}
+        >
         {/* Иконка транспорта */}
         <div
           className="w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0"
@@ -188,6 +242,9 @@ export function TransitionCard({
           </motion.div>
         )}
       </AnimatePresence>
+        </>
+      )}
+      </motion.div>
     </motion.div>
   )
 }

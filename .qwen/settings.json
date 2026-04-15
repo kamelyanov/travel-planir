@@ -9,7 +9,10 @@
       "Bash(npm create *)",
       "Bash(npm install)",
       "Bash(npm run *)",
-      "Bash(mkdir *)"
+      "Bash(mkdir *)",
+      "Bash(findstr *)",
+      "Bash(tasklist)",
+      "Bash(timeout *)"
     ]
   },
   "$version": 3

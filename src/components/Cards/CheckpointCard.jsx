@@ -27,10 +27,19 @@ export function CheckpointCard({
   onAddRouteBefore,
   onAddRouteAfter,
   hasConflict = false,
+  isCollapsed = false,
+  onToggleCollapse = () => {},
 }) {
   const [isEditing, setIsEditing] = useState(route.isNew || false)
   const [showColorPicker, setShowColorPicker] = useState(false)
   const { showConfirm, showAlert } = useModalStore()
+
+  // Синхронизируем локальное состояние с глобальным collapsedRoutes
+  useEffect(() => {
+    if (isCollapsed && isEditing) {
+      setIsEditing(false)
+    }
+  }, [isCollapsed])
 
   // При первом рендере, если isNew — сбрасываем флаг
   const hasInitialized = useRef(false)
@@ -74,7 +83,7 @@ export function CheckpointCard({
     >
       {/* Шапка карточки */}
       <div
-        className="flex items-center justify-between px-3 py-2 cursor-pointer"
+        className="flex items-center justify-between px-3 py-2 cursor-pointer group"
         onClick={() => setIsEditing(!isEditing)}
       >
         {/* Название точки */}
@@ -95,8 +104,62 @@ export function CheckpointCard({
           </div>
         )}
 
-        {/* Кнопки действий */}
+        {/* Кнопки типа точки (в шапке справа) */}
         <div className="flex items-center gap-1">
+          {/* Кнопка "Сделать стартовой" — только на первой карточке, если нет стартовой */}
+          {isFirst && !hasStartRoute && !isStart && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onStartRoute(tripId, route.id)
+              }}
+              className="p-1 rounded-button transition-all"
+              style={{ opacity: 0.2 }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = 0.2}
+              title="Сделать стартовой — начать построение маршрута от этой точки"
+            >
+              <Play size={12} className="text-ozon-text-secondary" />
+            </button>
+          )}
+
+          {/* Кнопка "Сделать финишной" — только на последней карточке, если нет финишной */}
+          {isLast && !hasFinishRoute && !isFinish && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onFinishRoute(tripId, route.id)
+              }}
+              className="p-1 rounded-button transition-all"
+              style={{ opacity: 0.2 }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = 0.2}
+              title="Сделать финишной — завершить построение маршрута в этой точке"
+            >
+              <Flag size={12} className="text-ozon-text-secondary" />
+            </button>
+          )}
+
+          {/* Индикатор если уже стартовая/финишная */}
+          {isStart && (
+            <div
+              className="p-1 rounded-button"
+              style={{ opacity: 0.5 }}
+              title="Стартовая точка"
+            >
+              <Play size={12} className="text-green-600" />
+            </div>
+          )}
+          {isFinish && (
+            <div
+              className="p-1 rounded-button"
+              style={{ opacity: 0.5 }}
+              title="Финишная точка"
+            >
+              <Flag size={12} className="text-red-600" />
+            </div>
+          )}
+
           {/* Блокировка */}
           {route.isLocked && (
             <Lock size={12} style={{ color: themeConfig.dot }} className="mr-0.5" />
@@ -122,105 +185,6 @@ export function CheckpointCard({
             className="overflow-hidden"
           >
             <div className="px-3 pb-3 space-y-2 border-t" style={{ borderColor: themeConfig.cardDark }}>
-
-              {/* Тогл типа точки */}
-              <div>
-                <label className="block text-[11px] font-medium text-ozon-text-secondary mb-1">
-                  Тип точки
-                </label>
-                <div className="flex rounded-inner overflow-hidden border" style={{ borderColor: themeConfig.cardDark }}>
-                  {isFirst ? (
-                    /* Первая карточка: Стартовая / Финишная */
-                    <>
-                      {(!hasStartRoute || isStart) && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onPointTypeChange(tripId, route.id, POINT_TYPES.start)
-                          }}
-                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all border-r`}
-                          style={{
-                            backgroundColor: isStart ? '#4CAF50' : 'transparent',
-                            borderColor: themeConfig.cardDark,
-                            color: isStart ? '#fff' : undefined,
-                          }}
-                        >
-                          <Play size={12} />
-                          Стартовая
-                        </button>
-                      )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onPointTypeChange(tripId, route.id, isFinish ? POINT_TYPES.normal : POINT_TYPES.finish)
-                        }}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all ${
-                          isFinish ? 'text-white' : 'text-ozon-text-secondary'
-                        }`}
-                        style={{
-                          backgroundColor: isFinish ? '#F44336' : 'transparent',
-                        }}
-                      >
-                        <Flag size={12} />
-                        Финишная
-                      </button>
-                    </>
-                  ) : isLast ? (
-                    /* Последняя карточка: Промежуточная / Финишная */
-                    <>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onPointTypeChange(tripId, route.id, POINT_TYPES.normal)
-                        }}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all ${
-                          !isStart && !isFinish ? 'text-white' : 'text-ozon-text-secondary'
-                        }`}
-                        style={{
-                          backgroundColor: (!isStart && !isFinish) ? '#005BFF' : 'transparent',
-                        }}
-                      >
-                        <MapPin size={12} />
-                        Промежуточная
-                      </button>
-                      {!hasFinishRoute || isFinish ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onPointTypeChange(tripId, route.id, isFinish ? POINT_TYPES.normal : POINT_TYPES.finish)
-                          }}
-                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all border-l`}
-                          style={{
-                            backgroundColor: isFinish ? '#F44336' : 'transparent',
-                            borderColor: themeConfig.cardDark,
-                            color: isFinish ? '#fff' : undefined,
-                          }}
-                        >
-                          <Flag size={12} />
-                          Финишная
-                        </button>
-                      ) : null}
-                    </>
-                  ) : (
-                    /* Срединная карточка: только Промежуточная */
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onPointTypeChange(tripId, route.id, POINT_TYPES.normal)
-                      }}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-all ${
-                        !isStart && !isFinish ? 'text-white' : 'text-ozon-text-secondary'
-                      }`}
-                      style={{
-                        backgroundColor: (!isStart && !isFinish) ? '#005BFF' : 'transparent',
-                      }}
-                    >
-                      <MapPin size={12} />
-                      Промежуточная
-                    </button>
-                  )}
-                </div>
-              </div>
 
               {/* Название точки */}
               <div>

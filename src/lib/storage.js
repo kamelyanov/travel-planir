@@ -1,5 +1,6 @@
 const STORAGE_KEY_TRIPS = 'travel_trips_v2'
 const STORAGE_KEY_OLD_ROUTES = 'travel_routes'
+const STORAGE_KEY_COLLAPSED = 'travel_collapsed_routes'
 
 /**
  * Сервис хранения данных в localStorage
@@ -67,9 +68,37 @@ export class StorageService {
     try {
       localStorage.removeItem(STORAGE_KEY_TRIPS)
       localStorage.removeItem(STORAGE_KEY_OLD_ROUTES)
+      localStorage.removeItem(STORAGE_KEY_COLLAPSED)
       return true
     } catch (error) {
       console.error('Ошибка при очистке:', error)
+      return false
+    }
+  }
+
+  /**
+   * Загружает состояние свёрнутых карточек
+   */
+  loadCollapsedRoutes() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY_COLLAPSED)
+      if (!data) return {}
+      return JSON.parse(data)
+    } catch (error) {
+      console.error('Ошибка при загрузке состояния сворачивания:', error)
+      return {}
+    }
+  }
+
+  /**
+   * Сохраняет состояние свёрнутых карточек
+   */
+  saveCollapsedRoutes(collapsedRoutes) {
+    try {
+      localStorage.setItem(STORAGE_KEY_COLLAPSED, JSON.stringify(collapsedRoutes))
+      return true
+    } catch (error) {
+      console.error('Ошибка при сохранении состояния сворачивания:', error)
       return false
     }
   }

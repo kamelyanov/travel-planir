@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
-import { RotateCcw } from 'lucide-react'
+import { RotateCcw, ChevronDown, ChevronUp } from 'lucide-react'
 import { useTripStore } from '../../store/useTripStore'
 import { useModalStore } from '../../store/useModalStore'
 import { Timeline } from '../Timeline/Timeline'
+import { TimelineItem } from '../Timeline/TimelineItem'
+import { TransitionTimelineItem } from '../Timeline/TransitionTimelineItem'
 import { CheckpointCard } from '../Cards/CheckpointCard'
 import { TransitionCard } from '../Cards/TransitionCard'
 import { POINT_TYPES } from '../../constants/themes'
@@ -25,6 +27,8 @@ export function TimelineView() {
     setPointType,
     setRouteColorTheme,
     checkTimeConflicts,
+    collapsedRoutes,
+    toggleCollapseRoute,
   } = useTripStore()
   const { showConfirm } = useModalStore()
 
@@ -133,63 +137,111 @@ export function TimelineView() {
         </button>
       )}
 
-      {/* Таймлайн + карточки */}
-      <div className="flex gap-2 relative">
-        {/* Левая колонка — таймлайн */}
-        <Timeline 
-          routes={routes} 
-          conflictRouteIds={conflicts}
-        />
+      {/* Таймлайн + карточки — единый layout строками */}
+      <div className="flex flex-col gap-0 relative">
+        <AnimatePresence>
+          {routes.map((route, index) => {
+            const isFirst = index === 0
+            const isLast = index === routes.length - 1
+            const hasConflict = conflicts.includes(route.id)
+            const isCollapsed = !!collapsedRoutes[route.id]
 
-        {/* Правая колонка — карточки */}
-        <div className="flex-1 space-y-3 min-w-0">
-          <AnimatePresence>
-            {routes.map((route, index) => {
-              const isFirst = index === 0
-              const isLast = index === routes.length - 1
-              const hasConflict = conflicts.includes(route.id)
+            return (
+              <div key={`route-${route.id}`}>
+                {/* Строка: точка таймлайна + карточка */}
+                <div className="flex gap-2 items-stretch">
+                  {/* Левая колонка — точка таймлайна */}
+                  <div
+                    className="w-[48px] md:w-[60px] flex-shrink-0 flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity relative group"
+                    onClick={() => {
+                      const el = document.getElementById(`checkpoint-${route.id}`)
+                      if (el) {
+                        const headerOffset = 80
+                        const elPosition = el.getBoundingClientRect().top + window.scrollY - headerOffset
+                        window.scrollTo({ top: elPosition, behavior: 'smooth' })
+                      }
+                    }}
+                  >
+                    <TimelineItem
+                      route={route}
+                      isLast={isLast}
+                      hasConflict={hasConflict}
+                    />
+                    {/* Tooltip */}
+                    <div className="absolute right-full mr-2 top-8 px-2 py-1 bg-ozon-text-primary text-white text-[10px] font-medium rounded-button whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                      {route.destination.name || 'Без названия'}
+                    </div>
+                  </div>
 
-              return (
-                <div key={`route-${route.id}`}>
-                  {/* Карточка точки */}
-                  <CheckpointCard
-                    route={route}
-                    tripId={activeTripId}
-                    isFirst={isFirst}
-                    isLast={isLast}
-                    routeCount={routes.length}
-                    hasStartRoute={hasStartRoute}
-                    hasFinishRoute={hasFinishRoute}
-                    onStartRoute={handleStartRoute}
-                    onFinishRoute={handleFinishRoute}
-                    onPointTypeChange={handlePointTypeChange}
-                    onAddRouteBefore={handleAddRouteBefore}
-                    onAddRouteAfter={handleAddRouteAfter}
-                    onDelete={handleDeleteRoute}
-                    onToggleLock={handleToggleLock}
-                    onUpdate={handleUpdateRoute}
-                    onColorThemeChange={handleColorThemeChange}
-                    hasConflict={hasConflict}
-                  />
+                  {/* Правая колонка — карточка точки */}
+                  <div className="flex-1 min-w-0">
+                    <CheckpointCard
+                      route={route}
+                      tripId={activeTripId}
+                      isFirst={isFirst}
+                      isLast={isLast}
+                      routeCount={routes.length}
+                      hasStartRoute={hasStartRoute}
+                      hasFinishRoute={hasFinishRoute}
+                      onStartRoute={handleStartRoute}
+                      onFinishRoute={handleFinishRoute}
+                      onPointTypeChange={handlePointTypeChange}
+                      onAddRouteBefore={handleAddRouteBefore}
+                      onAddRouteAfter={handleAddRouteAfter}
+                      onDelete={handleDeleteRoute}
+                      onToggleLock={handleToggleLock}
+                      onUpdate={handleUpdateRoute}
+                      onColorThemeChange={handleColorThemeChange}
+                      hasConflict={hasConflict}
+                      isCollapsed={isCollapsed}
+                      onToggleCollapse={() => toggleCollapseRoute(route.id)}
+                    />
+                  </div>
+                </div>
 
-                  {/* Переезд (если не последняя точка) */}
-                  {!isLast && (
-                    <>
+                {/* Строка переезда (если не последняя точка) */}
+                {!isLast && (
+                  <div className="flex gap-2 items-center">
+                    {/* Левая колонка — кнопка + длительность (поверх линии из TimelineItem) */}
+                    <div className="w-[48px] md:w-[60px] flex-shrink-0 flex flex-col items-center">
+                      {/* Кнопка сворачивания/разворачивания */}
+                      <div
+                        className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-ozon-card-gray transition-colors cursor-pointer"
+                        onClick={() => toggleCollapseRoute(route.id)}
+                      >
+                        {isCollapsed ? (
+                          <ChevronDown size={14} className="text-ozon-text-secondary" />
+                        ) : (
+                          <ChevronUp size={14} className="text-ozon-text-secondary" />
+                        )}
+                      </div>
+
+                      {/* Длительность переезда — поверх линии */}
+                      <TransitionTimelineItem
+                        transportType={route.transportType || 'walking'}
+                        travelDuration={route.travelDuration}
+                        isLast={false}
+                      />
+                    </div>
+
+                    {/* Правая колонка — карточка переезда */}
+                    <div className="flex-1 min-w-0">
                       <TransitionCard
                         fromRoute={route}
                         toRoute={routes[index + 1]}
                         tripId={activeTripId}
                         onUpdate={handleUpdateRoute}
                         isTravelDurationFixed={route.fixedField?.includes('travelDuration') || false}
+                        isCollapsed={isCollapsed}
+                        onToggleCollapse={() => toggleCollapseRoute(route.id)}
                       />
-                    </>
-                  )}
-                </div>
-              )
-            })}
-          </AnimatePresence>
-
-        </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </AnimatePresence>
       </div>
     </div>
   )

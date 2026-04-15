@@ -15,6 +15,9 @@ const hasOldData = initialTrips.length === 0
 const migratedTrips = hasOldData ? storage.migrateOldData() : null
 const tripsData = migratedTrips || initialTrips
 
+// Загружаем состояние сворачивания из localStorage
+const collapsedRoutesData = storage.loadCollapsedRoutes() || {}
+
 /**
  * Создаёт маршрут по умолчанию
  */
@@ -66,6 +69,7 @@ export const useTripStore = create((set, get) => ({
   // Состояние
   trips: tripsData,
   activeTripId: tripsData.length > 0 ? tripsData[0].id : null,
+  collapsedRoutes: collapsedRoutesData,
 
   // Получить активную поездку
   getActiveTrip: () => {
@@ -400,6 +404,22 @@ export const useTripStore = create((set, get) => ({
     set({
       trips: [],
       activeTripId: null,
+      collapsedRoutes: {},
     })
+  },
+
+  // Переключить состояние сворачивания карточки
+  toggleCollapseRoute: (routeId) => {
+    const { collapsedRoutes } = get()
+    const updated = { ...collapsedRoutes }
+    
+    if (updated[routeId]) {
+      delete updated[routeId]
+    } else {
+      updated[routeId] = true
+    }
+    
+    set({ collapsedRoutes: updated })
+    storage.saveCollapsedRoutes(updated)
   },
 }))
