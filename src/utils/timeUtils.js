@@ -189,9 +189,10 @@ export function shouldCalculateTravelDuration(prevRoute, nextRoute) {
  * @param {number} defaultTravelDuration - Длительность пути по умолчанию (мин)
  * @returns {Object} dates объект для новой точки
  */
-export function calculateDatesForNewRoute(refRoute, position = 'after', defaultStayDuration = 60, defaultTravelDuration = 60) {
-  const travelMin = defaultTravelDuration || getTravelDurationMinutes(refRoute) || 60
-  const stayMin = defaultStayDuration || 60
+export function calculateDatesForNewRoute(refRoute, position = 'after', defaultStayDuration = 60, defaultTravelDuration = null) {
+  // Берём реальное время в пути из референсной точки или дефолт
+  const travelMin = defaultTravelDuration ?? getTravelDurationMinutes(refRoute) ?? 60
+  const stayMin = defaultStayDuration ?? 60
 
   if (position === 'after') {
     // Новая точка ПОСЛЕ: arrival = departure_ref + travel

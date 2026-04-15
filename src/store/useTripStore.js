@@ -31,8 +31,8 @@ function createDefaultRoute(overrides = {}) {
       startTime: '',
       endTime: '',
     },
-    travelDuration: { hours: 0, minutes: 0 },
-    stayDuration: 0, // в минутах
+    travelDuration: 60, // в минутах — время в пути до следующей точки
+    stayDuration: 60, // в минутах — длительность пребывания
     notes: '',
     details: '',
     status: 'draft',

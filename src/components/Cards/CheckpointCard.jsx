@@ -30,9 +30,33 @@ export function CheckpointCard({
   isCollapsed = false,
   onToggleCollapse = () => {},
 }) {
-  const [isEditing, setIsEditing] = useState(route.isNew || false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [isTitleEditing, setIsTitleEditing] = useState(false)
+  const [titleValue, setTitleValue] = useState(route.destination.name || '')
   const [showColorPicker, setShowColorPicker] = useState(false)
   const { showConfirm, showAlert } = useModalStore()
+
+  const titleInputRef = useRef(null)
+
+  // При фокусе на заголовок — выделяем весь текст
+  useEffect(() => {
+    if (isTitleEditing && titleInputRef.current) {
+      titleInputRef.current.focus()
+      titleInputRef.current.select()
+    }
+  }, [isTitleEditing])
+
+  // Сохранение названия
+  const saveTitle = () => {
+    setIsTitleEditing(false)
+    if (titleValue.trim()) {
+      onUpdate(tripId, route.id, {
+        destination: { ...route.destination, name: titleValue.trim() }
+      })
+    } else {
+      setTitleValue(route.destination.name || '')
+    }
+  }
 
   // Синхронизируем локальное состояние с глобальным collapsedRoutes
   useEffect(() => {
@@ -41,11 +65,20 @@ export function CheckpointCard({
     }
   }, [isCollapsed])
 
-  // При первом рендере, если isNew — сбрасываем флаг
+  // Синхронизируем локальное значение заголовка
+  useEffect(() => {
+    setTitleValue(route.destination.name || '')
+  }, [route.destination.name])
+
+  // При первом рендере, если isNew — запоминаем
   const hasInitialized = useRef(false)
+  const [showMiniForm, setShowMiniForm] = useState(false)
+  
   useEffect(() => {
     if (route.isNew && !hasInitialized.current) {
       hasInitialized.current = true
+      setShowMiniForm(true)
+      setIsTitleEditing(true) // Сразу открываем редактирование заголовка
       onUpdate(tripId, route.id, { isNew: false })
     }
   }, [])
@@ -83,16 +116,40 @@ export function CheckpointCard({
     >
       {/* Шапка карточки */}
       <div
-        className="flex items-center justify-between px-3 py-2 cursor-pointer group"
-        onClick={() => setIsEditing(!isEditing)}
+        className="flex items-center justify-between px-3 py-2 group"
       >
-        {/* Название точки */}
-        <h3
-          className="text-base font-semibold flex-1 truncate"
-          style={{ color: '#1A1A1A' }}
-        >
-          {title}
-        </h3>
+        {/* Название точки — inline редактирование */}
+        {isTitleEditing ? (
+          <input
+            ref={titleInputRef}
+            type="text"
+            value={titleValue}
+            onChange={(e) => setTitleValue(e.target.value)}
+            onBlur={saveTitle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') saveTitle()
+              if (e.key === 'Escape') {
+                setIsTitleEditing(false)
+                setTitleValue(route.destination.name || '')
+              }
+            }}
+            className="text-base font-semibold flex-1 bg-transparent border-b border-ozon-text-secondary focus:border-ozon-accent outline-none px-1 py-0.5"
+            style={{ color: '#1A1A1A' }}
+            placeholder="Введите название..."
+          />
+        ) : (
+          <h3
+            className="text-base font-semibold flex-1 truncate cursor-pointer hover:opacity-80 transition-opacity"
+            style={{ color: '#1A1A1A' }}
+            onClick={(e) => {
+              e.stopPropagation()
+              setIsTitleEditing(true)
+            }}
+            title="Нажмите для редактирования"
+          >
+            {title}
+          </h3>
+        )}
 
         {/* Бейдж длительности */}
         {!isStart && !isFinish && stayDuration > 0 && (
@@ -165,18 +222,101 @@ export function CheckpointCard({
             <Lock size={12} style={{ color: themeConfig.dot }} className="mr-0.5" />
           )}
 
-          {/* Развернуть/свернуть */}
-          {isEditing ? (
-            <ChevronUp size={14} className="text-ozon-text-secondary" />
-          ) : (
-            <ChevronDown size={14} className="text-ozon-text-secondary" />
-          )}
+          {/* Кнопка редактировать/свернуть */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setIsEditing(!isEditing)
+            }}
+            className="p-1 rounded-button transition-colors hover:bg-ozon-card-gray"
+            title={isEditing ? 'Свернуть' : 'Редактировать'}
+          >
+            {isEditing ? (
+              <ChevronUp size={14} className="text-ozon-text-secondary" />
+            ) : (
+              <ChevronDown size={14} className="text-ozon-text-secondary" />
+            )}
+          </button>
         </div>
       </div>
       
-      {/* Редактор */}
+      {/* Мини-форма при создании */}
       <AnimatePresence>
-        {isEditing && (
+        {showMiniForm && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-3 pb-3 space-y-2 border-t" style={{ borderColor: themeConfig.cardDark }}>
+              <div className="text-[11px] font-medium text-ozon-text-secondary mb-1">
+                ⚡ Быстрое создание точки
+              </div>
+
+              {/* Время прибытия (только для не-стартовой) */}
+              {!isStart && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-medium text-ozon-text-secondary mb-1">
+                      Дата прибытия
+                    </label>
+                    <input
+                      type="date"
+                      value={route.dates.startDate || ''}
+                      onChange={(e) => onUpdate(tripId, route.id, {
+                        dates: { ...route.dates, startDate: e.target.value }
+                      })}
+                      className="ozon-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-ozon-text-secondary mb-1">
+                      Время прибытия
+                    </label>
+                    <input
+                      type="time"
+                      value={route.dates.startTime || ''}
+                      onChange={(e) => onUpdate(tripId, route.id, {
+                        dates: { ...route.dates, startTime: e.target.value }
+                      })}
+                      className="ozon-input"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Кнопка готова */}
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowMiniForm(false)
+                  }}
+                  className="flex-1 py-2 px-3 rounded-button text-sm font-medium bg-ozon-accent text-white hover:bg-ozon-accent/90 transition-colors"
+                >
+                  ✓ Точка создана
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowMiniForm(false)
+                    setIsEditing(true)
+                  }}
+                  className="py-2 px-3 rounded-button text-sm font-medium text-ozon-text-secondary hover:text-ozon-text-primary transition-colors"
+                >
+                  Подробнее →
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Полная форма редактирования */}
+      <AnimatePresence>
+        {isEditing && !showMiniForm && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
@@ -186,23 +326,6 @@ export function CheckpointCard({
           >
             <div className="px-3 pb-3 space-y-2 border-t" style={{ borderColor: themeConfig.cardDark }}>
 
-              {/* Название точки */}
-              <div>
-                <label className="block text-[11px] font-medium text-ozon-text-secondary mb-1">
-                  Название точки
-                </label>
-                <input
-                  type="text"
-                  value={route.destination.name}
-                  onChange={(e) => onUpdate(tripId, route.id, { 
-                    destination: { ...route.destination, name: e.target.value }
-                  })}
-                  placeholder="Введите название места или адрес"
-                  className="ozon-input"
-                  disabled={route.isLocked}
-                />
-              </div>
-              
               {/* Время прибытия */}
               {!isStart && (
                 <div className="grid grid-cols-2 gap-2">
